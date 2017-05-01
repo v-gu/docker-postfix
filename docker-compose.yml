@@ -1,0 +1,11 @@
+version: '2'
+
+services:
+  postfix:
+    image: lisnaz/postfix:latest
+    ports:
+     - "25:25/tcp"
+    environment:
+     - POSTFIX_HOSTNAME=hostname
+     - POSTFIX_VA_ENTRIES=john@exmaple1.com dow@example2.com
+     - POSTFIX_TRANSPORTS=gmail.com smtp:[74.125.28.26]
