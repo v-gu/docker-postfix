@@ -1,3 +1,4 @@
+## -*- docker-image-name: lisnaz/postfix -*-
 #
 # Dockerfile for postfix
 #
