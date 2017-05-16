@@ -3,19 +3,35 @@
 # Dockerfile for postfix
 #
 
-FROM alpine:latest
-MAINTAINER Vincent.Gu <g@v-io.co>
+FROM lisnaz/alpine:latest
+MAINTAINER Vincent Gu <g@v-io.co>
 
-ENV POSTFIX_SMTP_PORT    25
-ENV POSTFIX_SUBM_PORT    587
-EXPOSE $POSTFIX_SMTP_PORT/tcp
-EXPOSE $POSTFIX_SUBM_PORT/tcp
+ENV POSTFIX_HOSTNAME= \
+    POSTFIX_DOMAIN=$POSTFIX_HOSTNAME= \
+    POSTFIX_ORIGIN=$POSTFIX_HOSTNAME= \
+    POSTFIX_SMTP_PORT=25 \
+    POSTFIX_SUBM_PORT=587 \
+    POSTFIX_VA_DOMAIN=$POSTFIX_HOSTNAME \
+    POSTFIX_VA_ENTRIES= \
+    POSTFIX_TRANSPORTS= \
+    \
+    APP_DIR=/srv/postfix \
+    PROC1="/usr/lib/postfix/master -d" \
+    PROC1_SCRIPT_DIRNAME=postfix
 
-ADD entrypoint.sh /
-ENTRYPOINT ["/entrypoint.sh"]
+# define service ports
+EXPOSE $POSTFIX_SMTP_PORT/tcp \
+       $POSTFIX_SUBM_PORT/tcp
 
-# install postfix
-ENV INS_PKG=postfix
-RUN set -ex \
-&& apk add --update $INS_PKG \
-&& rm -rf /var/cache/apk/*
+# install software stack
+RUN set -ex && \
+    DEP=postfix && \
+    apk add --update --no-cache $DEP && \
+    rm -rf /var/cache/apk/* && \
+    ln -s /etc/postfix /srv/postfix
+
+# add runtime scripts
+ADD scripts ${PROC_SCRIPTS_DIR}/
+
+# define default directory
+WORKDIR $APP_DIR

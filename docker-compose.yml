@@ -5,6 +5,7 @@ services:
     image: lisnaz/postfix:latest
     ports:
      - "25:25/tcp"
+     - "587:587/tcp"
     environment:
      - POSTFIX_HOSTNAME=hostname
      - POSTFIX_VA_ENTRIES=john@exmaple1.com dow@example2.com
