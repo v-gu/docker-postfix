@@ -17,11 +17,11 @@ ENV POSTFIX_SUBM_PORT           587
 #ENV POSTFIX_TRANSPORTS
 
 ENV APP_DIR                     /srv/postfix
-ENV PROC1                       postfix start
+ENV PROC1                       rsyslogd
 ENV PROC1_ISDAEMON              true
-ENV PROC1_SCRIPT_DIRNAME        postfix
-ENV PROC2                       rsyslogd
+ENV PROC2                       postfix start
 ENV PROC2_ISDAEMON              true
+ENV PROC2_SCRIPT_DIRNAME        postfix
 ENV PROC3                       tail -f /var/log/maillog
 ENV PROC3_ISDAEMON              false
 
