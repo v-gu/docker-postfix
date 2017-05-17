@@ -15,6 +15,7 @@ ENV POSTFIX_SUBM_PORT           587
 #ENV POSTFIX_VA_DOMAINS          $POSTFIX_HOSTNAME
 #ENV POSTFIX_VA_MAPS
 #ENV POSTFIX_TRANSPORTS
+ENV USE_POSTSRSD                true
 
 ENV APP_DIR                     /srv/postfix
 ENV PROC1                       rsyslogd

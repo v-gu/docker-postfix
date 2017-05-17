@@ -12,6 +12,7 @@ POSTFIX_SUBM_PORT="${POSTFIX_SUBM_PORT:-submisstion}"
 POSTFIX_VA_DOMAINS="${POSTFIX_VA_DOMAINS}"
 POSTFIX_VA_MAPS="${POSTFIX_VA_MAPS}"
 POSTFIX_TRANSPORTS="${POSTFIX_TRANSPORTS}"
+USE_POSTSRSD="${USE_POSTSRSD:-false}"
 
 # modify master.cf
 if [ -z "${POSTFIX_SMTP_PORT+x}" -o "$POSTFIX_SMTP_PORT" == "25" ]; then
@@ -71,3 +72,23 @@ postmap ${APP_DIR}/virtual
 # add transport entries
 echo -e "$POSTFIX_TRANSPORTS" > ${APP_DIR}/transport
 postmap ${APP_DIR}/transport
+
+# add PostSRSd options if requested
+if [ "${USE_POSTSRSD}" == "true" ]; then
+    main="$(< ${APP_DIR}/main.cf)"
+    echo "${main}" | \
+        gawk \
+            -v APP_DIR="${APP_DIR}" \
+            ' \
+            /^sender_canonical_maps[[:blank:]]*=/{scm=1; sub(/=.*$/, "= tcp:localhost:10001")} \
+            /^sender_canonical_classes[[:blank:]]*=/{scc=1; sub(/=.*$/, "= envelope_sender")} \
+            /^recipient_canonical_maps[[:blank:]]*=/{rcm=1; sub(/=.*$/, "= tcp:localhost:10002")} \
+            /^recipient_canonical_classes[[:blank:]]*=/{rcc=1; sub(/=.*$/, "= envelope_recipient,header_recipient")} \
+            {print $0} \
+            END {if (!scm) {print "sender_canonical_maps = tcp:localhost:10001"}} \
+            END {if (!scc) {print "sender_canonical_classes = envelope_sender"}} \
+            END {if (!rcm) {print "recipient_canonical_maps = tcp:localhost:10002"}} \
+            END {if (!rcc) {print "recipient_canonical_classes= envelope_recipient,header_recipient"}} \
+            ' \
+            > "${APP_DIR}/main.cf"
+fi
