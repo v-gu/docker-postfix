@@ -31,7 +31,7 @@ EXPOSE $POSTFIX_SMTP_PORT/tcp \
 
 # install software stack
 RUN set -ex && \
-    DEP=postfix rsyslogd && \
+    DEP='postfix rsyslog' && \
     apk add --update --no-cache $DEP && \
     rm -rf /var/cache/apk/* && \
     ln -s /etc/postfix /srv/postfix
