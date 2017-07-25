@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 
-if [ "${INIT_DEBUG}" == true ]; then
-    set -x
-fi
+# defining apps
+POSTFIX_DIR=${APP_DIR}/postfix
+POSTSRSD_DIR=${APP_DIR}/postsrsd
+OPENDKIM_DIR=${APP_DIR}/opendkim
+SASL2_DIR=${APP_DIR}/sasl2
+ln -sn /etc/postfix ${POSTFIX_DIR}
+ln -sn /etc/postsrsd ${POSTSRSD_DIR}
+ln -sn /etc/opendkim ${OPENDKIM_DIR}
 
+# define variables
 POSTFIX_HOSTNAME="${POSTFIX_HOSTNAME}"
 POSTFIX_DOMAIN="${POSTFIX_DOMAIN:-$POSTFIX_HOSTNAME}"
 POSTFIX_ORIGIN="${POSTFIX_ORIGIN:-$POSTFIX_HOSTNAME}"
@@ -19,12 +25,26 @@ USE_POSTSRSD="${USE_POSTSRSD:-no}"
 POSTFIX_VA_DOMAINS="${POSTFIX_VA_DOMAINS}"
 POSTFIX_VA_MAPS="${POSTFIX_VA_MAPS}"
 POSTFIX_TRANSPORTS="${POSTFIX_TRANSPORTS}"
+SRS_DOMAIN="${SRS_DOMAIN}"
+#SRS_SEPARATOR=
+SRS_FORWARD_PORT=10001
+SRS_REVERSE_PORT=10002
+SRS_TIMEOUT=1800
+SRS_SECRET="${SRS_SECRET:-${POSTSRSD_DIR}/postsrsd.secret}"
+#SRS_PID_FILE=
+#SRS_RUN_AS=
+#SRS_CHROOT=
+#SRS_EXCLUDE_DOMAINS=
 
-# init master.cf
+# start rsyslogd
+rsyslogd
+
+# init postfix
+## init master.cf
 if [ -z "${POSTFIX_SMTP_PORT+x}" -o "$POSTFIX_SMTP_PORT" == "25" ]; then
     POSTFIX_SMTP_PORT=smtp
 fi
-cat <<EOF > ${APP_DIR}/master.cf
+cat <<EOF > ${POSTFIX_DIR}/master.cf
 # ==========================================================================
 # service type  private unpriv  chroot  wakeup  maxproc command + args
 #               (yes)   (yes)   (no)    (never) (100)
@@ -55,14 +75,14 @@ anvil     unix  -       -       n       -       1       anvil
 scache    unix  -       -       n       -       1       scache
 EOF
 
-# init main.cf
-cat <<EOF >${APP_DIR}/main.cf
+## init main.cf
+cat <<EOF >${POSTFIX_DIR}/main.cf
 myhostname = ${POSTFIX_HOSTNAME}
 mydomain = ${POSTFIX_DOMAIN}
 myorigin = ${POSTFIX_ORIGIN}
 virtual_alias_domains = ${POSTFIX_VA_DOMAINS}
-virtual_alias_maps = hash:${APP_DIR}/virtual
-transport_maps = hash:${APP_DIR}/transport
+virtual_alias_maps = hash:${POSTFIX_DIR}/virtual
+transport_maps = hash:${POSTFIX_DIR}/transport
 EOF
 
 # add submission configs if required
@@ -71,7 +91,8 @@ if [ "${USE_SUBMISSION}" == 'yes' ]; then
         POSTFIX_SUBM_PORT=submission
     fi
 
-    cat <<EOF >> ${APP_DIR}/master.cf
+    # add submission to postfix's master.cf
+    cat <<EOF >> ${POSTFIX_DIR}/master.cf
 ${POSTFIX_SUBM_PORT}    inet n       -       n       -       -       smtpd
   -o syslog_name=postfix/submission
   -o smtpd_tls_security_level=may
@@ -83,31 +104,75 @@ ${POSTFIX_SUBM_PORT}    inet n       -       n       -       -       smtpd
   -o milter_macro_daemon_name=ORIGINATING
 EOF
 
-    mkdir -p ${APP_DIR}/sasl2 && \
-        cat <<EOF >${APP_DIR}/sasl2/smtpd.conf
+    # make sasl2 config
+    mkdir -p ${SASL2_DIR} && \
+        cat <<EOF >${SASL2_DIR}/smtpd.conf
 sasldb_path: ${SASLDB_PATH}
 pwcheck_method: auxprop
 auxprop_plugin: sasldb
 mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5 NTLM
 log_level: 7
 EOF
-    ln -s ${APP_DIR}/sasl2/smtpd.conf /usr/lib/sasl2/smtpd.conf
+    ln -s ${SASL2_DIR}/smtpd.conf /usr/lib/sasl2/smtpd.conf
 fi
 
 #add SRS configs if required
 if [ "${USE_POSTSRSD}" == 'yes' ]; then
-    cat <<EOF >> ${APP_DIR}/main.cf
-sender_canonical_maps = tcp:localhost:10001
+    cat <<EOF >> ${POSTFIX_DIR}/main.cf
+sender_canonical_maps = tcp:localhost:${SRS_FORWARD_PORT}
 sender_canonical_classes = envelope_sender
-recipient_canonical_maps = tcp:localhost:10002
+recipient_canonical_maps = tcp:localhost:${SRS_REVERSE_PORT}
 recipient_canonical_classes= envelope_recipient,header_recipient
 EOF
 
     # add virtual entries
-    echo -e "$POSTFIX_VA_MAPS" > ${APP_DIR}/virtual
-    postmap ${APP_DIR}/virtual
+    echo -e "$POSTFIX_VA_MAPS" > ${POSTFIX_DIR}/virtual
+    postmap ${POSTFIX_DIR}/virtual
 
     # add transport entries
-    echo -e "$POSTFIX_TRANSPORTS" > ${APP_DIR}/transport
-    postmap ${APP_DIR}/transport
+    echo -e "$POSTFIX_TRANSPORTS" > ${POSTFIX_DIR}/transport
+    postmap ${POSTFIX_DIR}/transport
+
+    # prepare postsrsd
+    echo $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) > "${SRS_SECRET}"
+
+    # run postsrsd
+    cmd="postsrsd -D"
+    if [ -n "${SRS_DOMAIN+x}" ]; then
+        cmd+=" -d ${SRS_DOMAIN}"
+    fi
+    if [ -n "${SRS_SEPARATOR+x}" ]; then
+        cmd+=" -a ${SRS_SEPARATOR}"
+    fi
+    if [ -n "${SRS_FORWARD_PORT+x}" ]; then
+        cmd+=" -f ${SRS_FORWARD_PORT}"
+    fi
+    if [ -n "${SRS_REVERSE_PORT+x}" ]; then
+        cmd+=" -r ${SRS_REVERSE_PORT}"
+    fi
+    if [ -n "${SRS_TIMEOUT+x}" ]; then
+        cmd+=" -t ${SRS_TIMEOUT}"
+    fi
+    if [ -n "${SRS_SECRET+x}" ]; then
+        cmd+=" -s ${SRS_SECRET}"
+    fi
+    if [ -n "${SRS_PID_FILE+x}" ]; then
+        cmd+=" -p ${SRS_PID_FILE}"
+    fi
+    if [ -n "${SRS_RUN_AS+x}" ]; then
+        cmd+=" -u ${SRS_RUN_AS}"
+    fi
+    if [ -n "${SRS_CHROOT+x}" ]; then
+        cmd+=" -c ${SRS_CHROOT}"
+    fi
+    if [ -n "${SRS_EXCLUDE_DOMAINS+x}" ]; then
+        cmd+=" -X ${SRS_EXCLUDE_DOMAINS}"
+    fi
+    eval "${cmd}"
 fi
+
+# run postfix
+postfix start
+
+# tail logs to stderr
+exec tail -f /var/log/maillog >&2

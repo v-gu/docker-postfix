@@ -2,6 +2,10 @@
 #
 # Dockerfile for postfix
 #
+# need init: true
+# need additional files:
+#   - TLS Cert and key
+#   - SASLDB file
 
 FROM lisnaz/alpine:latest
 MAINTAINER Vincent Gu <v@vgu.io>
@@ -22,15 +26,8 @@ ENV USE_POSTSRSD                no
 ENV POSTFIX_VA_DOMAINS          $POSTFIX_HOSTNAME
 ENV POSTFIX_VA_MAPS             ""
 ENV POSTFIX_TRANSPORTS          ""
-
-ENV APP_DIR                     /srv/postfix
-ENV PROC1                       rsyslogd
-ENV PROC1_ISDAEMON              true
-ENV PROC2                       postfix start
-ENV PROC2_ISDAEMON              true
-ENV PROC2_SCRIPT_DIRNAME        postfix
-ENV PROC3                       tail -f /var/log/maillog
-ENV PROC3_ISDAEMON              false
+ENV SRS_DOMAIN                  example.com
+ENV SRS_SECRET                  ""
 
 # define service ports
 EXPOSE $POSTFIX_SMTP_PORT/tcp \
@@ -38,13 +35,9 @@ EXPOSE $POSTFIX_SMTP_PORT/tcp \
 
 # install software stack
 RUN set -ex && \
-    DEP='postfix cyrus-sasl rsyslog' && \
+    DEP='rsyslog cyrus-sasl postfix postsrsd opendkim' && \
     apk add --update --no-cache $DEP && \
-    rm -rf /var/cache/apk/* && \
-    ln -s /etc/postfix /srv/postfix
+    rm -rf /var/cache/apk/*
 
-# add runtime scripts
-ADD scripts ${PROC_SCRIPTS_DIR}/
-
-# define default directory
-WORKDIR $APP_DIR
+# add startup script
+ADD imagescripts/run.sh ${APP_DIR}/run.sh

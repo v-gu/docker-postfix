@@ -7,22 +7,23 @@ services:
     - "25:25/tcp"
     - "587:587/tcp"
     volumes:
-    - postfix-letsencrypt-keys:/srv/keys
+    - tls:/srv/tls
     - postfix-sasldb:/srv/sasldb
     environment:
       POSTFIX_HOSTNAME: example.com
+
+      USE_SUBMISSION: "yes"
+      POSTFIX_SMTP_TLS_CERT_FILE: /srv/tls/cert.pem
+      POSTFIX_SMTP_TLS_KEY_FILE: /srv/tls/key.pem
+      SASLDB_PATH: /srv/sasldb/sasldb2
+
+      USE_POSTSRSD: "yes"
       POSTFIX_VA_DOMAINS: john@exmaple.com
       POSTFIX_VA_MAPS: |
         john@example.com dow@remote.com
       POSTFIX_TRANSPORTS: gmail.com smtp:[74.125.28.26]
-      POSTFIX_SMTP_TLS_CERT_FILE: /srv/tls/fullchain.pem
-      POSTFIX_SMTP_TLS_KEY_FILE: /srv/tls/privkey.pem
-      SASLDB_PATH: /srv/sasldb/sasldb2
-      USE_POSTSRSD: "true"
-  postsrsd:
-    container_name: postsrsd
-    image: lisnaz/postsrsd:latest
-    network_mode: service:postfix
-    environment:
-     - SRS_DOMAIN=john@example.com
-    restart: always
+      SRS_DOMAIN: john@example.com
+
+volumes:
+  tls:
+  postfix-sasldb:
