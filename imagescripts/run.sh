@@ -1,40 +1,9 @@
 #!/usr/bin/env bash
 
-# defining apps
-POSTFIX_DIR=${APP_DIR}/postfix
-POSTSRSD_DIR=${APP_DIR}/postsrsd
-OPENDKIM_DIR=${APP_DIR}/opendkim
-SASL2_DIR=${APP_DIR}/sasl2
+# preparing app directories
 ln -sn /etc/postfix ${POSTFIX_DIR}
 ln -sn /etc/postsrsd ${POSTSRSD_DIR}
 ln -sn /etc/opendkim ${OPENDKIM_DIR}
-
-# define variables
-POSTFIX_HOSTNAME="${POSTFIX_HOSTNAME}"
-POSTFIX_DOMAIN="${POSTFIX_DOMAIN:-$POSTFIX_HOSTNAME}"
-POSTFIX_ORIGIN="${POSTFIX_ORIGIN:-$POSTFIX_HOSTNAME}"
-POSTFIX_SMTP_PORT="${POSTFIX_SMTP_PORT:-smtp}"
-
-USE_SUBMISSION="${USE_SUBMISSION:-no}"
-POSTFIX_SUBM_PORT="${POSTFIX_SUBM_PORT:-submisstion}"
-POSTFIX_SMTP_TLS_CERT_FILE="${POSTFIX_SMTP_TLS_CERT_FILE}"
-POSTFIX_SMTP_TLS_KEY_FILE="${POSTFIX_SMTP_TLS_KEY_FILE}"
-SASLDB_PATH="${SASLDB_PATH:-/etc/sasldb2}"
-
-USE_POSTSRSD="${USE_POSTSRSD:-no}"
-POSTFIX_VA_DOMAINS="${POSTFIX_VA_DOMAINS}"
-POSTFIX_VA_MAPS="${POSTFIX_VA_MAPS}"
-POSTFIX_TRANSPORTS="${POSTFIX_TRANSPORTS}"
-SRS_DOMAIN="${SRS_DOMAIN}"
-#SRS_SEPARATOR=
-SRS_FORWARD_PORT=10001
-SRS_REVERSE_PORT=10002
-SRS_TIMEOUT=1800
-SRS_SECRET="${SRS_SECRET:-${POSTSRSD_DIR}/postsrsd.secret}"
-#SRS_PID_FILE=
-#SRS_RUN_AS=
-#SRS_CHROOT=
-#SRS_EXCLUDE_DOMAINS=
 
 # start rsyslogd
 rsyslogd
@@ -138,6 +107,9 @@ EOF
 
     # run postsrsd
     cmd="postsrsd -D"
+    if [ -n "${SRS_LISTEN_ADDR+x}" ]; then
+        cmd+=" -l ${SRS_LISTEN_ADDR}"
+    fi
     if [ -n "${SRS_DOMAIN+x}" ]; then
         cmd+=" -d ${SRS_DOMAIN}"
     fi
@@ -167,6 +139,12 @@ EOF
     fi
     if [ -n "${SRS_EXCLUDE_DOMAINS+x}" ]; then
         cmd+=" -X ${SRS_EXCLUDE_DOMAINS}"
+    fi
+    if [ -n "${SRS_REWRITE_HASH_LEN+x}" ]; then
+        cmd+=" -n ${SRS_REWRITE_HASH_LEN}"
+    fi
+    if [ -n "${SRS_VALIDATE_HASH_MINLEN+x}" ]; then
+        cmd+=" -N ${SRS_VALIDATE_HASH_MINLEN}"
     fi
     eval "${cmd}"
 fi
