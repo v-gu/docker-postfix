@@ -22,6 +22,7 @@ ENV POSTFIX_ORIGIN                      "${POSTFIX_DOMAIN}"
 ENV POSTFIX_SMTP_PORT                   25
 
 ENV USE_SUBMISSION                      no
+ENV SMTP_TLS_SECURITY_LEVEL             may
 ENV POSTFIX_SUBM_PORT                   587
 ENV POSTFIX_SMTP_TLS_CERT_FILE          ""
 ENV POSTFIX_SMTP_TLS_KEY_FILE           ""

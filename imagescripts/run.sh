@@ -12,6 +12,7 @@ POSTFIX_ORIGIN="${POSTFIX_ORIGIN:-${POSTFIX_HOSTNAME}}"
 POSTFIX_SMTP_PORT="${POSTFIX_SMTP_PORT:-smtp}"
 
 USE_SUBMISSION="${USE_SUBMISSION:-no}"
+SMTP_TLS_SECURITY_LEVEL="${SMTP_TLS_SECURITY_LEVEL:-may}"
 POSTFIX_SUBM_PORT="${POSTFIX_SUBM_PORT:-submission}"
 POSTFIX_SMTP_TLS_CERT_FILE="${POSTFIX_SMTP_TLS_CERT_FILE}"
 POSTFIX_SMTP_TLS_KEY_FILE="${POSTFIX_SMTP_TLS_KEY_FILE}"
@@ -100,6 +101,9 @@ milter_default_action = accept
 # OpenDKIM runs on port ${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}.
 smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
 non_smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
+
+# Other settings.
+header_size_limit = 4096000
 EOF
 
 # add submission configs if required
@@ -182,10 +186,12 @@ EOF
     # add virtual entries
     echo -e "$POSTFIX_VA_MAPS" > ${POSTFIX_DIR}/virtual
     postmap ${POSTFIX_DIR}/virtual
+    rm ${POSTFIX_DIR}/virtual
 
     # add transport entries
     echo -e "$POSTFIX_TRANSPORTS" > ${POSTFIX_DIR}/transport
     postmap ${POSTFIX_DIR}/transport
+    rm ${POSTFIX_DIR}/transport
 
     # prepare postsrsd
     echo $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) > "${SRS_SECRET}"
