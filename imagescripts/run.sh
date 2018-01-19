@@ -262,6 +262,7 @@ smtp_sasl_auth_enable = ${SMTP_SASL_AUTH_ENABLE}
 smtp_tls_security_level = ${SMTP_TLS_SECURITY_LEVEL}
 smtp_sasl_security_options = ${SMTP_SASL_SECURITY_OPTIONS}
 smtp_sasl_tls_security_options = ${SMTP_SASL_TLS_SECURITY_OPTIONS}
+smtp_sasl_password_maps = ${SMTP_SASL_PASSWORD_MAPS}
 EOF
 fi
 
