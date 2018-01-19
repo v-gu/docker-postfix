@@ -5,18 +5,24 @@ POSTFIX_DIR="${POSTFIX_DIR}"
 POSTSRSD_DIR="${POSTSRSD_DIR}"
 OPENDKIM_DIR="${OPENDKIM_DIR}"
 SASL2_DIR="${SASL2_DIR}"
+SASLDB_PATH="${SASLDB_PATH}"
 
 POSTFIX_HOSTNAME="${POSTFIX_HOSTNAME}"
 POSTFIX_DOMAIN="${POSTFIX_DOMAIN:-${POSTFIX_HOSTNAME}}"
 POSTFIX_ORIGIN="${POSTFIX_ORIGIN:-${POSTFIX_HOSTNAME}}"
-POSTFIX_SMTP_PORT="${POSTFIX_SMTP_PORT:-smtp}"
 
-USE_SUBMISSION="${USE_SUBMISSION:-no}"
-SMTP_TLS_SECURITY_LEVEL="${SMTP_TLS_SECURITY_LEVEL:-may}"
-POSTFIX_SUBM_PORT="${POSTFIX_SUBM_PORT:-submission}"
-POSTFIX_SMTP_TLS_CERT_FILE="${POSTFIX_SMTP_TLS_CERT_FILE}"
-POSTFIX_SMTP_TLS_KEY_FILE="${POSTFIX_SMTP_TLS_KEY_FILE}"
-SASLDB_PATH="${SASLDB_PATH:-/etc/sasldb2}"
+# smtp input service
+SMTPD_PORT="${SMTPD_PORT:-smtp}"
+SMTPD_USE_SUBMISSION="${SMTPD_USE_SUBMISSION:-no}"
+SMTPD_SUBM_PORT="${SMTPD_SUBM_PORT:-submission}"
+SMTPD_SUBM_TLS_SECURITY_LEVEL="${SMTPD_SUBM_TLS_SECURITY_LEVEL:-may}"
+SMTPD_SUBM_TLS_CERT_FILE="${SMTPD_SUBM_TLS_CERT_FILE}"
+SMTPD_SUBM_TLS_KEY_FILE="${SMTPD_SUBM_TLS_KEY_FILE}"
+SMTPD_SUBM_SASL_AUTH="${SMTPD_SUBM_SASL_AUTH:no}"
+SMTPD_SUBM_REJECT_UNLISTED_RECIPIENT="${SMTPD_REJECT_UNLISTED_RECIPIENT:-no}"
+SMTPD_SUBM_RELAY_RESTRICTIONS="${SMTPD_RELAY_RESTRICTIONS:-permit_sasl_authenticated,reject}"
+
+# DKIM
 DKIM_LISTEN_ADDR="${DKIM_LISTEN_ADDR:-127.0.0.1}"
 DKIM_LISTEN_PORT="${DKIM_LISTEN_PORT:-9901}"
 DKIM_DOMAIN="${DKIM_DOMAIN:-${POSTFIX_DOMAIN}}"
@@ -41,6 +47,14 @@ SRS_CHROOT="${SRS_CHROOT}"
 SRS_EXCLUDE_DOMAINS="${SRS_EXCLUDE_DOMAINS}"
 SRS_REWRITE_HASH_LEN="${SRS_REWRITE_HASH_LEN:-4}"
 SRS_VALIDATE_HASH_MINLEN="${SRS_VALIDATE_HASH_MINLEN:-4}"
+
+# smtp output service
+SMTP_SASL_AUTH_ENABLE="${SMTP_SASL_AUTH_ENABLE:-no}"
+SMTP_TLS_SECURITY_LEVEL="${SMTP_TLS_SECURITY_LEVEL:-encrypt}"
+SMTP_SASL_SECURITY_OPTIONS="${SMTP_SASL_SECURITY_OPTIONS:-noanonymous}"
+SMTP_SASL_TLS_SECURITY_OPTIONS="${SMTP_SASL_TLS_SECURITY_OPTIONS:-noanonymous}"
+SMTP_SASL_PASSWORD_MAPS="${SMTP_SASL_PASSWORD_MAPS:-hash:/etc/postfix/sasl_passwd}"
+SMTP_RELAYHOST="${SMTP_RELAYHOST}"
 
 # preparing app directories
 ln -sn /etc/postfix ${POSTFIX_DIR}
@@ -116,17 +130,17 @@ if [ "${USE_SUBMISSION}" == 'yes' ]; then
     cat <<EOF >> ${POSTFIX_DIR}/master.cf
 ${POSTFIX_SUBM_PORT}    inet n       -       n       -       -       smtpd
   -o syslog_name=postfix/submission
-  -o smtpd_tls_security_level=may
-  -o smtpd_tls_cert_file=${POSTFIX_SMTP_TLS_CERT_FILE}
-  -o smtpd_tls_key_file=${POSTFIX_SMTP_TLS_KEY_FILE}
-  -o smtpd_sasl_auth_enable=yes
-  -o smtpd_reject_unlisted_recipient=no
-  -o smtpd_relay_restrictions=permit_sasl_authenticated,reject
+  -o smtpd_tls_security_level=${SMTPD_SUBM_TLS_SECURITY_LEVEL}
+  -o smtpd_tls_cert_file=${SMTPD_SUBM_TLS_CERT_FILE}
+  -o smtpd_tls_key_file=${SMTPD_SUBM_TLS_KEY_FILE}
+  -o smtpd_sasl_auth_enable=${SMTPD_SUBM_SASL_AUTH}
+  -o smtpd_reject_unlisted_recipient=${SMTPD_SUBM_REJECT_UNLISTED_RECIPIENT}
+  -o smtpd_relay_restrictions=${SMTPD_SUBM_RELAY_RESTRICTIONS}
   -o milter_macro_daemon_name=ORIGINATING
 EOF
 
     # make sasl2 config
-    mkdir -p ${SASL2_DIR} && \
+    mkdir -p ${SASL2_DIR} && mkdir -p ${SASLDB_PATH} && \
         cat <<EOF >${SASL2_DIR}/smtpd.conf
 sasldb_path: ${SASLDB_PATH}
 pwcheck_method: auxprop
@@ -238,6 +252,25 @@ EOF
     #     cmd+=" -N ${SRS_VALIDATE_HASH_MINLEN}"
     # fi
     eval "${cmd}"
+fi
+
+## handle smtp output config
+if [ "${SMTP_SASL_AUTH_ENABLE}" == "yes" ]; then
+    cat <<EOF >${POSTFIX_DIR}/main.cf
+
+smtp_sasl_auth_enable = ${SMTP_SASL_AUTH_ENABLE}
+smtp_tls_security_level = ${SMTP_TLS_SECURITY_LEVEL}
+smtp_sasl_security_options = ${SMTP_SASL_SECURITY_OPTIONS}
+smtp_sasl_tls_security_options = ${SMTP_SASL_TLS_SECURITY_OPTIONS}
+EOF
+fi
+
+## handle relayhost
+if [ -n "${SMTP_RELAYHOST}" ]; then
+    cat <<EOF >${POSTFIX_DIR}/main.cf
+
+relayhost = ${SMTP_RELAYHOST}
+EOF
 fi
 
 # run postfix

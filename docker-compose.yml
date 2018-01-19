@@ -12,10 +12,10 @@ services:
     environment:
       POSTFIX_HOSTNAME: example.com
 
-      USE_SUBMISSION: "yes"
-      POSTFIX_SMTP_TLS_CERT_FILE: /srv/tls/cert.pem
-      POSTFIX_SMTP_TLS_KEY_FILE: /srv/tls/key.pem
-      SASLDB_PATH: /srv/sasldb/sasldb2
+      SMTPD_USE_SUBMISSION: "yes"
+      SMTPD_SUBM_TLS_CERT_FILE: /srv/tls/cert.pem
+      SMTPD_SUBM_TLS_KEY_FILE: /srv/tls/key.pem
+      SMTPD_SUBM_SASL_AUTH: "yes"
 
       USE_POSTSRSD: "yes"
       POSTFIX_VA_DOMAINS: john@exmaple.com
