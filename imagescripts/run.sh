@@ -256,7 +256,7 @@ fi
 
 ## handle smtp output config
 if [ "${SMTP_SASL_AUTH_ENABLE}" == "yes" ]; then
-    cat <<EOF >${POSTFIX_DIR}/main.cf
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
 
 smtp_sasl_auth_enable = ${SMTP_SASL_AUTH_ENABLE}
 smtp_tls_security_level = ${SMTP_TLS_SECURITY_LEVEL}
@@ -267,7 +267,7 @@ fi
 
 ## handle relayhost
 if [ -n "${SMTP_RELAYHOST}" ]; then
-    cat <<EOF >${POSTFIX_DIR}/main.cf
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
 
 relayhost = ${SMTP_RELAYHOST}
 EOF
