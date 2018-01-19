@@ -64,8 +64,8 @@ ENV SMTP_SASL_PASSWORD_MAPS             "hash:${POSTFIX_DIR}/sasl_passwd"
 ENV SMTP_RELAYHOST                      ""
 
 # define service ports
-EXPOSE $POSTFIX_SMTP_PORT/tcp \
-       $POSTFIX_SUBM_PORT/tcp
+EXPOSE $SMTPD_PORT/tcp \
+       $SMTPD_SUBM_PORT/tcp
 
 # install software stack
 RUN set -ex && \
