@@ -10,12 +10,22 @@ services:
     - tls:/srv/tls
     - postfix-sasldb:/srv/sasldb
     environment:
+      POSTFIX_MODE: MTA
+
       POSTFIX_HOSTNAME: example.com
 
       SMTPD_USE_SUBMISSION: "yes"
       SMTPD_SUBM_TLS_CERT_FILE: /srv/tls/cert.pem
       SMTPD_SUBM_TLS_KEY_FILE: /srv/tls/key.pem
       SMTPD_SUBM_SASL_AUTH: "yes"
+
+      DKIM_KEY_FILE: /srv/tls/dkim/mail.private
+      DKIM_TRUSTED_HOSTS: |
+        127.0.0.1
+        ::1
+        localhost
+
+        google.com
 
       USE_POSTSRSD: "yes"
       POSTFIX_VA_DOMAINS: john@exmaple.com

@@ -9,6 +9,8 @@ services:
     volumes:
     - postfix:/etc/postfix
     environment:
+      POSTFIX_MODE: RELAY
+
       SMTP_SASL_AUTH_ENABLE: "yes"
       SMTP_RELAYHOST: "[smtp.sendgrid.net]:2525"
 
