@@ -15,7 +15,7 @@ ENV POSTFIX_DIR                         "${ROOT_DIR}/postfix"
 ENV POSTSRSD_DIR                        "${ROOT_DIR}/postsrsd"
 ENV OPENDKIM_DIR                        "${ROOT_DIR}/opendkim"
 ENV SASL2_DIR                           "${ROOT_DIR}/sasl2"
-ENV SASLDB_PATH                         "${ROOT_DIR}/sasldb"
+ENV SASLDB_PATH                         "${ROOT_DIR}/sasldb/sasldb2"
 
 ENV POSTFIX_MODE                        MTA
 

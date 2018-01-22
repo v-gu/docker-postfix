@@ -156,7 +156,7 @@ ${POSTFIX_SUBM_PORT}    inet n       -       n       -       -       smtpd
 EOF
 
     # make sasl2 config
-    mkdir -p ${SASL2_DIR} && mkdir -p ${SASLDB_PATH} && \
+    mkdir -p ${SASL2_DIR} && mkdir -p $(dirname ${SASLDB_PATH}) && \
         cat <<EOF >${SASL2_DIR}/smtpd.conf
 sasldb_path: ${SASLDB_PATH}
 pwcheck_method: auxprop
