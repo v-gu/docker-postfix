@@ -1,3 +1,6 @@
+# User provided contents:
+#   - sasl_password_maps
+
 version: '2'
 
 services:

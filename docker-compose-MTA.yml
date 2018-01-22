@@ -1,3 +1,10 @@
+# User provided contents:
+#   - submission tls certs
+#   - DKIM keys and policies
+#   - virtual alias domains
+#   - virtual alias maps
+#   - transports
+#   - SRS domain
 version: '2'
 
 services:
