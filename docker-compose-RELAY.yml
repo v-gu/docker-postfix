@@ -1,0 +1,16 @@
+version: '2'
+
+services:
+  postfix:
+    image: lisnaz/postfix:latest
+    ports:
+    - "25:25/tcp"
+    - "587:587/tcp"
+    volumes:
+    - postfix:/etc/postfix
+    environment:
+      SMTP_SASL_AUTH_ENABLE: "yes"
+      SMTP_RELAYHOST: "[smtp.sendgrid.net]:2525"
+
+volumes:
+  postfix:

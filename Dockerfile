@@ -17,6 +17,9 @@ ENV OPENDKIM_DIR                        "${ROOT_DIR}/opendkim"
 ENV SASL2_DIR                           "${ROOT_DIR}/sasl2"
 ENV SASLDB_PATH                         "${ROOT_DIR}/sasldb"
 
+ENV POSTFIX_MODE                        MTA
+
+ENV POSTFIX_MYNETWORKS                  ""
 ENV POSTFIX_HOSTNAME                    ""
 ENV POSTFIX_DOMAIN                      "${POSTFIX_HOSTNAME}"
 ENV POSTFIX_ORIGIN                      "${POSTFIX_DOMAIN}"

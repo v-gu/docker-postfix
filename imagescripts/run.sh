@@ -7,6 +7,9 @@ OPENDKIM_DIR="${OPENDKIM_DIR}"
 SASL2_DIR="${SASL2_DIR}"
 SASLDB_PATH="${SASLDB_PATH}"
 
+POSTFIX_MODE="${POSTFIX_MODE:-MTA}"
+
+POSTFIX_MYNETWORKS="${POSTFIX_MYNETWORKS}"
 POSTFIX_HOSTNAME="${POSTFIX_HOSTNAME}"
 POSTFIX_DOMAIN="${POSTFIX_DOMAIN:-${POSTFIX_HOSTNAME}}"
 POSTFIX_ORIGIN="${POSTFIX_ORIGIN:-${POSTFIX_HOSTNAME}}"
@@ -61,7 +64,8 @@ ln -sn /etc/postfix ${POSTFIX_DIR}
 ln -sn /etc/postsrsd ${POSTSRSD_DIR}
 ln -sn /etc/opendkim ${OPENDKIM_DIR}
 
-# start rsyslogd
+# start rsyslog
+rm -f /var/run/rsyslogd.pid
 rsyslogd
 
 # init postfix
@@ -102,6 +106,20 @@ EOF
 
 ## init main.cf
 cat <<EOF >${POSTFIX_DIR}/main.cf
+# misc settings
+header_size_limit = 4096000
+EOF
+
+if [ -n "${POSTFIX_MYNETWORKS}" ]; then
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+
+mynetworks = ${POSTFIX_MYNETWORKS}
+EOF
+fi
+
+if [ "${POSTFIX_MODE}" == "MTA" ]; then
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+
 myhostname = ${POSTFIX_HOSTNAME}
 mydomain = ${POSTFIX_DOMAIN}
 myorigin = ${POSTFIX_ORIGIN}
@@ -115,10 +133,8 @@ milter_default_action = accept
 # OpenDKIM runs on port ${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}.
 smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
 non_smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
-
-# Other settings.
-header_size_limit = 4096000
 EOF
+fi
 
 # add submission configs if required
 if [ "${USE_SUBMISSION}" == 'yes' ]; then
@@ -267,7 +283,7 @@ EOF
 fi
 
 ## handle relayhost
-if [ -n "${SMTP_RELAYHOST}" ]; then
+if [ "${POSTFIX_MODE}" == "RELAY" ]; then
     cat <<EOF >>${POSTFIX_DIR}/main.cf
 
 relayhost = ${SMTP_RELAYHOST}
