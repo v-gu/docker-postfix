@@ -1,29 +1,36 @@
 #!/usr/bin/env bash
 
 # init vars
-POSTFIX_DIR="${POSTFIX_DIR}"
-POSTSRSD_DIR="${POSTSRSD_DIR}"
-OPENDKIM_DIR="${OPENDKIM_DIR}"
-SASL2_DIR="${SASL2_DIR}"
-SASLDB_PATH="${SASLDB_PATH}"
-
-POSTFIX_MODE="${POSTFIX_MODE:-MTA}"
+POSTFIX_DIR="${POSTFIX_DIR:-${ROOT_DIR}/postfix}"
+POSTSRSD_DIR="${POSTSRSD_DIR:-${ROOT_DIR}/postsrsd}"
+OPENDKIM_DIR="${OPENDKIM_DIR:-${ROOT_DIR}/opendkim}"
+SASL_CONF_DIR="${SASL_CONF_DIR:-${ROOT_DIR}/sasl2}"
 
 POSTFIX_MYNETWORKS="${POSTFIX_MYNETWORKS}"
 POSTFIX_HOSTNAME="${POSTFIX_HOSTNAME}"
-POSTFIX_DOMAIN="${POSTFIX_DOMAIN:-${POSTFIX_HOSTNAME}}"
-POSTFIX_ORIGIN="${POSTFIX_ORIGIN:-${POSTFIX_HOSTNAME}}"
+POSTFIX_DOMAIN="${POSTFIX_DOMAIN}"
+POSTFIX_ORIGIN="${POSTFIX_ORIGIN:-${POSTFIX_DOMAIN}}"
 
-# smtp input service
-SMTPD_PORT="${SMTPD_PORT:-smtp}"
-SMTPD_USE_SUBMISSION="${SMTPD_USE_SUBMISSION:-no}"
-SMTPD_SUBM_PORT="${SMTPD_SUBM_PORT:-submission}"
-SMTPD_SUBM_TLS_SECURITY_LEVEL="${SMTPD_SUBM_TLS_SECURITY_LEVEL:-may}"
-SMTPD_SUBM_TLS_CERT_FILE="${SMTPD_SUBM_TLS_CERT_FILE}"
-SMTPD_SUBM_TLS_KEY_FILE="${SMTPD_SUBM_TLS_KEY_FILE}"
-SMTPD_SUBM_SASL_AUTH="${SMTPD_SUBM_SASL_AUTH:no}"
-SMTPD_SUBM_REJECT_UNLISTED_RECIPIENT="${SMTPD_REJECT_UNLISTED_RECIPIENT:-no}"
-SMTPD_SUBM_RELAY_RESTRICTIONS="${SMTPD_RELAY_RESTRICTIONS:-permit_sasl_authenticated,reject}"
+# local domain class
+ALIAS_MAPS="${ALIAS_MAPS}"
+
+# virtual alias domain class
+VIRTUAL_ALIAS_MAPS="${VIRTUAL_ALIAS_MAPS}"
+
+# virtual alias mainbox domain class
+VIRTUAL_MAILBOX_MAPS="${VIRTUAL_MAILBOX_MAPS}"
+
+# relay domain class
+RELAY_DOMAINS="${RELAY_DOMAINS}"
+RELAY_RECIPIENT_MAPS="${RELAY_RECIPIENT_MAPS}"
+SENDER_DEPENDENT_RELAYHOST_MAPS="${SENDER_DEPENDENT_RELAYHOST_MAPS}"
+RELAY_TRANSPORT="${RELAY_TRANSPORT:-relay}"
+RELAY_HOST="${RELAY_HOST}"
+
+# default domain class
+SENDER_DEPENDENT_DEFAULT_TRANSPORT_MAPS="${SENDER_DEPENDENT_DEFAULT_TRANSPORT_MAPS}"
+DEFAULT_TRANSPORT="${DEFAULT_TRANSPORT:-smtp}"
+TRANSPORT_MAPS="${TRANSPORT_MAPS}"
 
 # DKIM
 DKIM_LISTEN_ADDR="${DKIM_LISTEN_ADDR:-127.0.0.1}"
@@ -33,17 +40,13 @@ DKIM_SELECTOR="${DKIM_SELECTOR:-mail}"
 DKIM_KEY_FILE="${DKIM_KEY_FILE:-/etc/opendkim.d/${DKIM_SELECTOR}.private}"
 DKIM_TRUSTED_HOSTS="${DKIM_TRUSTED_HOSTS:-127.0.0.1\n::1\nlocalhost\n\n\*.example.com}"
 
-USE_POSTSRSD="${USE_POSTSRSD:-no}"
-POSTFIX_VA_DOMAINS="${POSTFIX_VA_DOMAINS:-${POSTFIX_DOMAIN}}"
-POSTFIX_VA_MAPS="${POSTFIX_VA_MAPS}"
-POSTFIX_TRANSPORTS="${POSTFIX_TRANSPORTS}"
 SRS_LISTEN_ADDR="${SRS_LISTEN_ADDR:-127.0.0.1}"
 SRS_DOMAIN="${SRS_DOMAIN:-${POSTFIX_DOMAIN}}"
 SRS_FORWARD_PORT="${SRS_FORWARD_PORT:-10001}"
 SRS_REVERSE_PORT="${SRS_REVERSE_PORT:-10002}"
 SRS_SEPARATOR="${SRS_SEPARATOR:-=}"
 SRS_TIMEOUT="${SRS_TIMEOUT:-1800}"
-SRS_SECRET="${SRS_SECRET:-${POSTSRSD_DIR}/postsrsd.secret}"
+SRS_SECRET_FILE="${SRS_SECRET:-${POSTSRSD_DIR}/postsrsd.secret}"
 SRS_PID_FILE="${SRS_PID_FILE}"
 SRS_RUN_AS="${SRS_RUN_AS}"
 SRS_CHROOT="${SRS_CHROOT}"
@@ -51,123 +54,146 @@ SRS_EXCLUDE_DOMAINS="${SRS_EXCLUDE_DOMAINS}"
 SRS_REWRITE_HASH_LEN="${SRS_REWRITE_HASH_LEN:-4}"
 SRS_VALIDATE_HASH_MINLEN="${SRS_VALIDATE_HASH_MINLEN:-4}"
 
-# smtp output service
-SMTP_SASL_AUTH_ENABLE="${SMTP_SASL_AUTH_ENABLE:-no}"
-SMTP_TLS_SECURITY_LEVEL="${SMTP_TLS_SECURITY_LEVEL:-encrypt}"
-SMTP_SASL_SECURITY_OPTIONS="${SMTP_SASL_SECURITY_OPTIONS:-noanonymous}"
-SMTP_SASL_TLS_SECURITY_OPTIONS="${SMTP_SASL_TLS_SECURITY_OPTIONS:-noanonymous}"
-SMTP_SASL_PASSWORD_MAPS="${SMTP_SASL_PASSWORD_MAPS:-hash:/etc/postfix/sasl_passwd}"
-SMTP_RELAYHOST="${SMTP_RELAYHOST}"
+# smtp ingress service
+USE_SMTPD="${USE_SMTPD:-no}"
+SMTPD_PORT="${SMTPD_PORT:-smtp}"
+SMTPD_RELAY_RESTRICTIONS="${SMTPD_RELAY_RESTRICTIONS:-permit_auth_destination,reject}"
+SMTPD_REJECT_UNLISTED_RECIPIENT="${SMTPD_REJECT_UNLISTED_RECIPIENT:-yes}"
+
+# submisstion ingress service
+USE_SUBMISSION="${USE_SUBMISSION:-no}"
+SUBM_PORT="${SUBM_PORT:-submission}"
+SUBM_TLS_SECURITY_LEVEL="${SUBM_TLS_SECURITY_LEVEL:-encrypt}"
+SUBM_TLS_CERT_FILE="${SUBM_TLS_CERT_FILE}"
+SUBM_TLS_KEY_FILE="${SUBM_TLS_KEY_FILE}"
+SUBM_SASL_AUTH="${SUBM_SASL_AUTH:yes}"
+SUBM_RELAY_RESTRICTIONS="${SUBM_RELAY_RESTRICTIONS:-permit_sasl_authenticated,reject}"
+SUBM_REJECT_UNLISTED_RECIPIENT="${SUBM_REJECT_UNLISTED_RECIPIENT:-no}"
+SUBM_SASL_DB_FILE="${SUBM_SASL_DB_FILE:-${ROOT_DIR}/sasldb2}"
+
+# check prerequisite variables
+if [ "${USE_SUBMISSION}" == "yes" ] && [ ! -f "${SUBM_SASL_DB_FILE}" ]; then
+    echo "submission's sasl database file not exist at path '${SUBM_SASL_DB_FILE}'"
+    exit 1
+fi
 
 # preparing app directories
 ln -sn /etc/postfix ${POSTFIX_DIR}
-ln -sn /etc/postsrsd ${POSTSRSD_DIR}
-ln -sn /etc/opendkim ${OPENDKIM_DIR}
 
 # start rsyslog
 rm -f /var/run/rsyslogd.pid
 rsyslogd
 
 # init postfix
-## init master.cf
-if [ -z "${POSTFIX_SMTP_PORT+x}" -o "$POSTFIX_SMTP_PORT" == "25" ]; then
-    POSTFIX_SMTP_PORT=smtp
-fi
-cat <<EOF > ${POSTFIX_DIR}/master.cf
-# ==========================================================================
-# service type  private unpriv  chroot  wakeup  maxproc command + args
-#               (yes)   (yes)   (no)    (never) (100)
-# ==========================================================================
-${POSTFIX_SMTP_PORT}    inet n       -       n       -       -       smtpd
-pickup    unix  n       -       n       60      1       pickup
-cleanup   unix  n       -       n       -       0       cleanup
-qmgr      unix  n       -       n       300     1       qmgr
-tlsmgr    unix  -       -       n       1000?   1       tlsmgr
-rewrite   unix  -       -       n       -       -       trivial-rewrite
-bounce    unix  -       -       n       -       0       bounce
-defer     unix  -       -       n       -       0       bounce
-trace     unix  -       -       n       -       0       bounce
-verify    unix  -       -       n       -       1       verify
-flush     unix  n       -       n       1000?   0       flush
-proxymap  unix  -       -       n       -       -       proxymap
-proxywrite unix -       -       n       -       1       proxymap
-smtp      unix  -       -       n       -       -       smtp
-relay     unix  -       -       n       -       -       smtp
-showq     unix  n       -       n       -       -       showq
-error     unix  -       -       n       -       -       error
-retry     unix  -       -       n       -       -       error
-discard   unix  -       -       n       -       -       discard
-local     unix  -       n       n       -       -       local
-virtual   unix  -       n       n       -       -       virtual
-lmtp      unix  -       -       n       -       -       lmtp
-anvil     unix  -       -       n       -       1       anvil
-scache    unix  -       -       n       -       1       scache
-EOF
-
 ## init main.cf
 cat <<EOF >${POSTFIX_DIR}/main.cf
 # misc settings
+compatibility_level =  9999
 header_size_limit = 4096000
 EOF
 
-if [ -n "${POSTFIX_MYNETWORKS}" ]; then
-    cat <<EOF >>${POSTFIX_DIR}/main.cf
+[ -n "${POSTFIX_MYNETWORKS}" ] && cat <<EOF >>${POSTFIX_DIR}/main.cf
 
 mynetworks = ${POSTFIX_MYNETWORKS}
 EOF
-fi
 
-if [ "${POSTFIX_MODE}" == "MTA" ]; then
-    cat <<EOF >>${POSTFIX_DIR}/main.cf
+cat <<EOF >>${POSTFIX_DIR}/main.cf
 
 myhostname = ${POSTFIX_HOSTNAME}
 mydomain = ${POSTFIX_DOMAIN}
 myorigin = ${POSTFIX_ORIGIN}
-virtual_alias_domains = ${POSTFIX_VA_DOMAINS}
-virtual_alias_maps = hash:${POSTFIX_DIR}/virtual
-transport_maps = hash:${POSTFIX_DIR}/transport
+EOF
 
-# Milter settings.
+# local domain class
+if [ -n "${ALIAS_MAPS}" ]; then
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+
+# local domain class
+alias_maps = hash:${POSTFIX_DIR}/alias
+EOF
+
+    # add alias db entries
+    echo -e "${ALIAS_MAPS}" > ${POSTFIX_DIR}/alias
+    postmap ${POSTFIX_DIR}/alias
+    rm ${POSTFIX_DIR}/alias
+fi
+
+# virtual alias domain class
+if [ -n "${VIRTUAL_ALIAS_MAPS}" ]; then
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+
+# virtual alias domain class
+virtual_alias_maps = hash:${POSTFIX_DIR}/virtual
+EOF
+    # add virtual db entries
+    echo -e "${VIRTUAL_ALIAS_MAPS}" > ${POSTFIX_DIR}/virtual
+    postmap ${POSTFIX_DIR}/virtual
+    rm ${POSTFIX_DIR}/virtual
+fi
+
+# relay domain class
+if [ -n "${RELAY_DOMAIN}" ]; then
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+
+# relay domain class
+relay_domains = "${RELAY_DOMAINS}"
+RELAY_RECIPIENT_MAPS = hash:${POSTFIX_DIR}/relay_recipient
+SENDER_DEPENDENT_RELAYHOST_MAPS = hash:${POSTFIX_DIR}/sender_dependent_relayhost
+RELAY_TRANSPORT = "${RELAY_TRANSPORT}"
+RELAY_HOST = "${RELAY_HOST}"
+EOF
+    # add relay recipient db entries
+    echo -e "${RELAY_RECIPIENT_MAPS}" > ${POSTFIX_DIR}/relay_recipient
+    postmap ${POSTFIX_DIR}/relay_recipient
+    rm ${POSTFIX_DIR}/relay_recipient
+    # add sender dependent relayhost db entries
+    echo -e "${SENDER_DEPENDENT_RELAYHOST_MAPS}" > ${POSTFIX_DIR}/sender_dependent_relayhost
+    postmap ${POSTFIX_DIR}/sender_dependent_relayhost
+    rm ${POSTFIX_DIR}/sender_dependent_relayhost
+fi
+
+# default domain class
+cat <<EOF >>${POSTFIX_DIR}/main.cf
+
+# default domain class
+EOF
+if [ -n "${SENDER_DEPENDENT_DEFAULT_TRANSPORT_MAPS}" ]; then
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+sender_dependent_default_transport_maps = hash:${POSTFIX_DIR}/sender_dependent_default_transport
+EOF
+    # add db entries
+    echo -e "${SENDER_DEPENDENT_DEFAULT_TRANSPORT_MAPS}" > ${POSTFIX_DIR}/sender_dependent_default_transport
+    postmap ${POSTFIX_DIR}/sender_dependent_default_transport
+    rm ${POSTFIX_DIR}/sender_dependent_default_transport
+fi
+
+[ -n "${DEFAULT_TRANSPORT}" ] && cat <<EOF >>${POSTFIX_DIR}/main.cf
+default_transport = ${DEFAULT_TRANSPORT}
+EOF
+
+if [ -n "${TRANSPORT_MAPS}" ]; then
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+transport_maps = hash:${POSTFIX_DIR}/transport
+EOF
+    # add db entries
+    echo -e "${TRANSPORT_MAPS}" > ${POSTFIX_DIR}/transport
+    postmap ${POSTFIX_DIR}/transport
+    rm ${POSTFIX_DIR}/transport
+fi
+
+# add opendkim config
+cat <<EOF >>${POSTFIX_DIR}/main.cf
+
+# DKIM
 milter_protocol = 2
 milter_default_action = accept
 # OpenDKIM runs on port ${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}.
 smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
 non_smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
 EOF
-fi
 
-# add submission configs if required
-if [ "${USE_SUBMISSION}" == 'yes' ]; then
-    if [ -z "${POSTFIX_SUBM_PORT+x}" -o "$POSTFIX_SUBM_PORT" == "587" ]; then
-        POSTFIX_SUBM_PORT=submission
-    fi
-
-    # add submission to postfix's master.cf
-    cat <<EOF >> ${POSTFIX_DIR}/master.cf
-${POSTFIX_SUBM_PORT}    inet n       -       n       -       -       smtpd
-  -o syslog_name=postfix/submission
-  -o smtpd_tls_security_level=${SMTPD_SUBM_TLS_SECURITY_LEVEL}
-  -o smtpd_tls_cert_file=${SMTPD_SUBM_TLS_CERT_FILE}
-  -o smtpd_tls_key_file=${SMTPD_SUBM_TLS_KEY_FILE}
-  -o smtpd_sasl_auth_enable=${SMTPD_SUBM_SASL_AUTH}
-  -o smtpd_reject_unlisted_recipient=${SMTPD_SUBM_REJECT_UNLISTED_RECIPIENT}
-  -o smtpd_relay_restrictions=${SMTPD_SUBM_RELAY_RESTRICTIONS}
-  -o milter_macro_daemon_name=ORIGINATING
-EOF
-
-    # make sasl2 config
-    mkdir -p ${SASL2_DIR} && mkdir -p $(dirname ${SASLDB_PATH}) && \
-        cat <<EOF >${SASL2_DIR}/smtpd.conf
-sasldb_path: ${SASLDB_PATH}
-pwcheck_method: auxprop
-auxprop_plugin: sasldb
-mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5 NTLM
-log_level: 7
-EOF
-    ln -s ${SASL2_DIR}/smtpd.conf /usr/lib/sasl2/smtpd.conf
-
-    # add opendkim config
-    cat <<EOF > ${OPENDKIM_DIR}/opendkim.conf
+ln -sn /etc/opendkim ${OPENDKIM_DIR}
+cat <<EOF > ${OPENDKIM_DIR}/opendkim.conf
 # OpenDKIM config.
 
 # Log to syslog
@@ -198,96 +224,162 @@ ExternalIgnoreList      refile:${OPENDKIM_DIR}/TrustedHosts
 InternalHosts           refile:${OPENDKIM_DIR}/TrustedHosts
 EOF
 
-    echo -e "${DKIM_TRUSTED_HOSTS}" > ${OPENDKIM_DIR}/TrustedHosts
+echo -e "${DKIM_TRUSTED_HOSTS}" > ${OPENDKIM_DIR}/TrustedHosts
 
-    # start opendkim server
-    opendkim
-fi
+# start opendkim server
+opendkim
 
-#add SRS configs if required
-if [ "${USE_POSTSRSD}" == 'yes' ]; then
-    cat <<EOF >> ${POSTFIX_DIR}/main.cf
+# add SRS config
+cat <<EOF >> ${POSTFIX_DIR}/main.cf
+
+# SRS
 sender_canonical_maps = tcp:localhost:${SRS_FORWARD_PORT}
 sender_canonical_classes = envelope_sender
 recipient_canonical_maps = tcp:localhost:${SRS_REVERSE_PORT}
 recipient_canonical_classes= envelope_recipient,header_recipient
 EOF
 
-    # add virtual entries
-    echo -e "$POSTFIX_VA_MAPS" > ${POSTFIX_DIR}/virtual
-    postmap ${POSTFIX_DIR}/virtual
-    rm ${POSTFIX_DIR}/virtual
+# prepare postsrsd
+ln -sn /etc/postsrsd ${POSTSRSD_DIR}
+echo $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) > "${SRS_SECRET_FILE}"
 
-    # add transport entries
-    echo -e "$POSTFIX_TRANSPORTS" > ${POSTFIX_DIR}/transport
-    postmap ${POSTFIX_DIR}/transport
-    rm ${POSTFIX_DIR}/transport
+# run postsrsd
+cmd="postsrsd -D"
+# if [ -n "${SRS_LISTEN_ADDR+x}" ]; then
+#     cmd+=" -l ${SRS_LISTEN_ADDR}"
+# fi
+if [ -n "${SRS_DOMAIN}" ]; then
+    cmd+=" -d ${SRS_DOMAIN}"
+fi
+if [ -n "${SRS_SEPARATOR}" ]; then
+    cmd+=" -a ${SRS_SEPARATOR}"
+fi
+if [ -n "${SRS_FORWARD_PORT}" ]; then
+    cmd+=" -f ${SRS_FORWARD_PORT}"
+fi
+if [ -n "${SRS_REVERSE_PORT}" ]; then
+    cmd+=" -r ${SRS_REVERSE_PORT}"
+fi
+if [ -n "${SRS_TIMEOUT}" ]; then
+    cmd+=" -t ${SRS_TIMEOUT}"
+fi
+if [ -n "${SRS_SECRET}" ]; then
+    cmd+=" -s ${SRS_SECRET}"
+fi
+if [ -n "${SRS_PID_FILE}" ]; then
+    cmd+=" -p ${SRS_PID_FILE}"
+fi
+if [ -n "${SRS_RUN_AS}" ]; then
+    cmd+=" -u ${SRS_RUN_AS}"
+fi
+if [ -n "${SRS_CHROOT}" ]; then
+    cmd+=" -c ${SRS_CHROOT}"
+fi
+if [ -n "${SRS_EXCLUDE_DOMAINS}" ]; then
+    cmd+=" -X ${SRS_EXCLUDE_DOMAINS}"
+fi
+# if [ -n "${SRS_REWRITE_HASH_LEN+x}" ]; then
+#     cmd+=" -n ${SRS_REWRITE_HASH_LEN}"
+# fi
+# if [ -n "${SRS_VALIDATE_HASH_MINLEN+x}" ]; then
+#     cmd+=" -N ${SRS_VALIDATE_HASH_MINLEN}"
+# fi
+eval "${cmd}"
 
-    # prepare postsrsd
-    echo $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) > "${SRS_SECRET}"
+# default smtpd ingress config
+cat <<EOF >>${POSTFIX_DIR}/main.cf
 
-    # run postsrsd
-    cmd="postsrsd -D"
-    # if [ -n "${SRS_LISTEN_ADDR+x}" ]; then
-    #     cmd+=" -l ${SRS_LISTEN_ADDR}"
-    # fi
-    if [ -n "${SRS_DOMAIN}" ]; then
-        cmd+=" -d ${SRS_DOMAIN}"
+# smtpd ingress
+smtpd_relay_restrictions = reject
+smtpd_reject_unlisted_recipient = yes
+EOF
+
+# master config
+cat <<EOF > ${POSTFIX_DIR}/master.cf
+# ==========================================================================
+# service type  private unpriv  chroot  wakeup  maxproc command + args
+#               (yes)   (yes)   (no)    (never) (100)
+# ==========================================================================
+EOF
+
+# smtpd in master.cf
+if [ "${USE_SMTPD}" == "${yes}" ]; then
+    if [ -z "${SMTP_PORT+x}"] || [ "${SMTP_PORT}" == "25" ]; then
+        SMTP_PORT=smtp
     fi
-    if [ -n "${SRS_SEPARATOR}" ]; then
-        cmd+=" -a ${SRS_SEPARATOR}"
-    fi
-    if [ -n "${SRS_FORWARD_PORT}" ]; then
-        cmd+=" -f ${SRS_FORWARD_PORT}"
-    fi
-    if [ -n "${SRS_REVERSE_PORT}" ]; then
-        cmd+=" -r ${SRS_REVERSE_PORT}"
-    fi
-    if [ -n "${SRS_TIMEOUT}" ]; then
-        cmd+=" -t ${SRS_TIMEOUT}"
-    fi
-    if [ -n "${SRS_SECRET}" ]; then
-        cmd+=" -s ${SRS_SECRET}"
-    fi
-    if [ -n "${SRS_PID_FILE}" ]; then
-        cmd+=" -p ${SRS_PID_FILE}"
-    fi
-    if [ -n "${SRS_RUN_AS}" ]; then
-        cmd+=" -u ${SRS_RUN_AS}"
-    fi
-    if [ -n "${SRS_CHROOT}" ]; then
-        cmd+=" -c ${SRS_CHROOT}"
-    fi
-    if [ -n "${SRS_EXCLUDE_DOMAINS}" ]; then
-        cmd+=" -X ${SRS_EXCLUDE_DOMAINS}"
-    fi
-    # if [ -n "${SRS_REWRITE_HASH_LEN+x}" ]; then
-    #     cmd+=" -n ${SRS_REWRITE_HASH_LEN}"
-    # fi
-    # if [ -n "${SRS_VALIDATE_HASH_MINLEN+x}" ]; then
-    #     cmd+=" -N ${SRS_VALIDATE_HASH_MINLEN}"
-    # fi
-    eval "${cmd}"
+    cat <<EOF > ${POSTFIX_DIR}/master.cf
+${POSTFIX_SMTP_PORT}    inet n       -       n       -       -       smtpd
+  -o smtpd_reject_unlisted_recipient=${SMTPD_REJECT_UNLISTED_RECIPIENT}
+  -o smtpd_relay_restrictions=${SMTPD_RELAY_RESTRICTIONS}
+EOF
 fi
 
-## handle smtp output config
-if [ "${SMTP_SASL_AUTH_ENABLE}" == "yes" ]; then
+# submission in master.cf
+if [ "${USE_SUBMISSION}" == 'yes' ]; then
+    if [ -z "${SUBM_PORT+x}" ] || [ "$SUBM_PORT" == "587" ]; then
+        SUBM_PORT=submission
+    fi
+    cat <<EOF >> ${POSTFIX_DIR}/master.cf
+${SUBM_PORT}    inet n       -       n       -       -       smtpd
+  -o syslog_name=postfix/submission
+  -o smtpd_relay_restrictions=${SUBM_RELAY_RESTRICTIONS}
+  -o smtpd_reject_unlisted_recipient=${SUBM_REJECT_UNLISTED_RECIPIENT}
+  -o smtpd_tls_security_level=${SUBM_TLS_SECURITY_LEVEL}
+  -o smtpd_tls_cert_file=${SUBM_TLS_CERT_FILE}
+  -o smtpd_tls_key_file=${SUBM_TLS_KEY_FILE}
+  -o smtpd_sasl_auth_enable=${SUBM_SASL_AUTH}
+  -o milter_macro_daemon_name=ORIGINATING
+EOF
+fi
+
+# other master.cf
+cat <<EOF >> ${POSTFIX_DIR}/master.cf
+pickup    unix  n       -       n       60      1       pickup
+cleanup   unix  n       -       n       -       0       cleanup
+qmgr      unix  n       -       n       300     1       qmgr
+tlsmgr    unix  -       -       n       1000?   1       tlsmgr
+rewrite   unix  -       -       n       -       -       trivial-rewrite
+bounce    unix  -       -       n       -       0       bounce
+defer     unix  -       -       n       -       0       bounce
+trace     unix  -       -       n       -       0       bounce
+verify    unix  -       -       n       -       1       verify
+flush     unix  n       -       n       1000?   0       flush
+proxymap  unix  -       -       n       -       -       proxymap
+proxywrite unix -       -       n       -       1       proxymap
+smtp      unix  -       -       n       -       -       smtp
+relay     unix  -       -       n       -       -       smtp
+showq     unix  n       -       n       -       -       showq
+error     unix  -       -       n       -       -       error
+retry     unix  -       -       n       -       -       error
+discard   unix  -       -       n       -       -       discard
+local     unix  -       n       n       -       -       local
+virtual   unix  -       n       n       -       -       virtual
+lmtp      unix  -       -       n       -       -       lmtp
+anvil     unix  -       -       n       -       1       anvil
+scache    unix  -       -       n       -       1       scache
+EOF
+
+# submission sasl config
+if [ "${USE_SUBMISSION}" == "yes" ]; then
     cat <<EOF >>${POSTFIX_DIR}/main.cf
 
-smtp_sasl_auth_enable = ${SMTP_SASL_AUTH_ENABLE}
-smtp_tls_security_level = ${SMTP_TLS_SECURITY_LEVEL}
-smtp_sasl_security_options = ${SMTP_SASL_SECURITY_OPTIONS}
-smtp_sasl_tls_security_options = ${SMTP_SASL_TLS_SECURITY_OPTIONS}
+# smtpd submission sasl config
 smtp_sasl_password_maps = ${SMTP_SASL_PASSWORD_MAPS}
 EOF
-fi
 
-## handle relayhost
-if [ "${POSTFIX_MODE}" == "RELAY" ]; then
-    cat <<EOF >>${POSTFIX_DIR}/main.cf
-
-relayhost = ${SMTP_RELAYHOST}
+    mkdir -p /etc/sasl2 && ln -sn /etc/sasl2 "${SASL_CONF_DIR}"
+    cat <<EOF >"${SASL_CONF_DIR}"/smtpd.conf
+sasldb_path: ${SUBM_SASL_DB_FILE}
+pwcheck_method: auxprop
+auxprop_plugin: sasldb
+mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5 NTLM
+log_level: 7
 EOF
+    if [ "${SASL_CONF_DIR}" != "/etc/sasl2" ]; then
+        ln -s "${SASL_CONF_DIR}"/smtpd.conf /etc/sasl2/smtpd.conf
+    fi
+
+    # user shoud provide sasldb2 file in ${SUBM_SASL_DB_FILE}
 fi
 
 # run postfix

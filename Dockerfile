@@ -11,29 +11,33 @@ FROM lisnaz/alpine:latest
 MAINTAINER Vincent Gu <v@vgu.io>
 
 # variable list
-ENV POSTFIX_DIR                         "${ROOT_DIR}/postfix"
-ENV POSTSRSD_DIR                        "${ROOT_DIR}/postsrsd"
-ENV OPENDKIM_DIR                        "${ROOT_DIR}/opendkim"
-ENV SASL2_DIR                           "${ROOT_DIR}/sasl2"
-ENV SASLDB_PATH                         "${ROOT_DIR}/sasldb/sasldb2"
-
-ENV POSTFIX_MODE                        MTA
-
 ENV POSTFIX_MYNETWORKS                  ""
 ENV POSTFIX_HOSTNAME                    ""
 ENV POSTFIX_DOMAIN                      "${POSTFIX_HOSTNAME}"
 ENV POSTFIX_ORIGIN                      "${POSTFIX_DOMAIN}"
 
-ENV SMTPD_PORT                          25
-ENV SMTPD_USE_SUBMISSION                no
-ENV SMTPD_SUBM_PORT                     587
-ENV SMTPD_SUBM_TLS_SECURITY_LEVEL       may
-ENV SMTPD_SUBM_TLS_CERT_FILE            ""
-ENV SMTPD_SUBM_TLS_KEY_FILE             ""
-ENV SMTPD_SUBM_SASL_AUTH                no
-ENV SMTPD_REJECT_UNLISTED_RECIPIENT     no
-ENV SMTPD_RELAY_RESTRICTIONS            permit_sasl_authenticated,reject
+# local alias
+ENV ALIAS_MAPS                          ""
 
+# virtual local alias
+ENV VIRTUAL_ALIAS_MAPS                  ""
+
+# virtual alias mainbox domain class
+ENV VIRTUAL_MAILBOX_MAPS                ""
+
+# relay domain class
+ENV RELAY_DOMAINS                       ""
+ENV RELAY_RECIPIENT_MAPS                ""
+ENV SENDER_DEPENDENT_RELAYHOST_MAPS     ""
+ENV RELAY_TRANSPORT                     "relay"
+ENV RELAY_HOST                          ""
+
+# default domain class
+ENV SENDER_DEPENDENT_DEFAULT_TRANSPORT_MAPS ""
+ENV DEFAULT_TRANSPORT                   "smtp"
+ENV TRANSPORT_MAPS                      ""
+
+# DKIM
 ENV DKIM_LISTEN_ADDR                    "127.0.0.1"
 ENV DKIM_LISTEN_PORT                    "8891"
 ENV DKIM_DOMAIN                         "${POSTFIX_DOMAIN}"
@@ -41,10 +45,6 @@ ENV DKIM_SELECTOR                       "mail"
 ENV DKIM_KEY_FILE                       "/etc/opendkim.d/${DKIM_SELECTOR}.private"
 ENV DKIM_TRUSTED_HOSTS                  "127.0.0.1\n::1\nlocalhost\n\n\*.example.com"
 
-ENV USE_POSTSRSD                        no
-ENV POSTFIX_VA_DOMAINS                  "${POSTFIX_DOMAIN}"
-ENV POSTFIX_VA_MAPS                     ""
-ENV POSTFIX_TRANSPORTS                  ""
 ENV SRS_LISTEN_ADDR                     "127.0.0.1"
 ENV SRS_DOMAIN                          "${POSTFIX_DOMAIN}"
 ENV SRS_FORWARD_PORT                    10001
@@ -59,12 +59,20 @@ ENV SRS_EXCLUDE_DOMAINS                 ""
 ENV SRS_REWRITE_HASH_LEN                4
 ENV SRS_VALIDATE_HASH_MINLEN            4
 
-ENV SMTP_SASL_AUTH_ENABLE               no
-ENV SMTP_TLS_SECURITY_LEVEL             encrypt
-ENV SMTP_SASL_SECURITY_OPTIONS          noanonymous
-ENV SMTP_SASL_TLS_SECURITY_OPTIONS      noanonymous
-ENV SMTP_SASL_PASSWORD_MAPS             "hash:${POSTFIX_DIR}/sasl_passwd"
-ENV SMTP_RELAYHOST                      ""
+ENV USE_SMTPD                           no
+ENV SMTPD_PORT                          25
+ENV SMTPD_RELAY_RESTRICTIONS            permit_auth_destination,reject
+ENV SMTPD_REJECT_UNLISTED_RECIPIENT     yes
+
+ENV USE_SUBMISSION                      no
+ENV SUBM_PORT                           587
+ENV SUBM_TLS_SECURITY_LEVEL             encrypt
+ENV SUBM_TLS_CERT_FILE                  ""
+ENV SUBM_TLS_KEY_FILE                   ""
+ENV SUBM_SASL_AUTH                      yes
+ENV SUBM_RELAY_RESTRICTIONS             permit_sasl_authenticated,reject
+ENV SUBM_REJECT_UNLISTED_RECIPIENT      no
+ENV SUBM_SASL_DB_FILE                   "${ROOT_DIR}/sasldb2"
 
 # define service ports
 EXPOSE $SMTPD_PORT/tcp \
