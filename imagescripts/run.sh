@@ -223,7 +223,7 @@ Socket                  inet:${DKIM_LISTEN_PORT}@${DKIM_LISTEN_ADDR}
 Canonicalization        relaxed/simple
 SignatureAlgorithm      rsa-sha256
 
-# Sign for example.com with key in /etc/opendkim.d/mail.private using
+# Sign for example.com with key in /etc/opendkim/mail.private using
 # selector 'mail' (e.g. mail._domainkey.example.com)
 Domain                  ${DKIM_DOMAIN}
 KeyFile                 ${DKIM_KEY_FILE}

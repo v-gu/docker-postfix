@@ -66,7 +66,7 @@ ENV SUBM_TLS_SECURITY_LEVEL             encrypt
 ENV SUBM_SASL_AUTH                      yes
 ENV SUBM_RELAY_RESTRICTIONS             permit_sasl_authenticated,reject
 ENV SUBM_REJECT_UNLISTED_RECIPIENT      no
-ENV SUBM_SASL_DB_FILE                   "${ROOT_DIR}/sasldb2"
+ENV SUBM_SASL_DB_FILE                   "${ROOT_DIR}/sasldb/sasldb2"
 ENV SUBM_SASL_USERNAME                  "smtp"
 ENV SUBM_SASL_PASSWORD                  ""
 
