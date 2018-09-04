@@ -1,0 +1,34 @@
+# User provided contents:
+#   - submission tls certs
+#   - DKIM keys and policies
+#   - virtual alias domains
+#   - virtual alias maps
+#   - transports
+#   - SRS domain
+version: '2'
+
+services:
+  postfix:
+    image: lisnaz/postfix:latest
+    ports:
+    - "25:25/tcp"
+    - "587:587/tcp"
+    volumes:
+    - tls:/srv/tls
+    - postfix-sasldb:/srv/sasldb
+    environment:
+      POSTFIX_HOSTNAME: mail.example.com
+      POSTFIX_DOMAIN: example.com
+      VIRTUAL_ALIAS_MAPS: |
+        john@example.com dow@remote.com
+      DKIM_TRUSTED_HOSTS: |
+        127.0.0.1
+        ::1
+        localhost
+        google.com
+      USE_SUBMISSION: "yes"
+      SUBM_SASL_PASSWORD: testpassword
+
+volumes:
+  tls:
+  postfix-sasldb:
