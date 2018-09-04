@@ -359,7 +359,7 @@ if [ "${USE_SMTPD}" == "yes" ]; then
     if [ -z "${SMTP_PORT}" ] || [ "${SMTP_PORT}" == "25" ]; then
         SMTP_PORT=smtp
     fi
-    cat <<EOF > ${POSTFIX_DIR}/master.cf
+    cat <<EOF >> ${POSTFIX_DIR}/master.cf
 ${SMTP_PORT}    inet n       -       n       -       -       smtpd
   -o smtpd_reject_unlisted_recipient=${SMTPD_REJECT_UNLISTED_RECIPIENT}
   -o smtpd_relay_restrictions=${SMTPD_RELAY_RESTRICTIONS}
@@ -369,7 +369,7 @@ fi
 # submission config
 if [ "${USE_SUBMISSION}" == 'yes' ]; then
     # sasl config
-    cat <<EOF >>${POSTFIX_DIR}/main.cf
+    cat <<EOF >> ${POSTFIX_DIR}/main.cf
 
 # smtpd submission sasl config
 smtp_sasl_password_maps = ${SMTP_SASL_PASSWORD_MAPS}
