@@ -37,7 +37,7 @@ DKIM_LISTEN_ADDR="${DKIM_LISTEN_ADDR:-127.0.0.1}"
 DKIM_LISTEN_PORT="${DKIM_LISTEN_PORT:-9901}"
 DKIM_DOMAIN="${DKIM_DOMAIN:-${POSTFIX_DOMAIN}}"
 DKIM_SELECTOR="${DKIM_SELECTOR:-mail}"
-DKIM_KEY_FILE="${DKIM_KEY_FILE:-/etc/opendkim.d/${DKIM_SELECTOR}.private}"
+DKIM_KEY_FILE="${DKIM_KEY_FILE:-${OPENDKIM_DIR}/${DKIM_SELECTOR}.private}"
 DKIM_TRUSTED_HOSTS="${DKIM_TRUSTED_HOSTS:-127.0.0.1\n::1\nlocalhost\n\n\*.example.com}"
 
 SRS_LISTEN_ADDR="${SRS_LISTEN_ADDR:-127.0.0.1}"
@@ -60,21 +60,29 @@ SMTPD_PORT="${SMTPD_PORT:-smtp}"
 SMTPD_RELAY_RESTRICTIONS="${SMTPD_RELAY_RESTRICTIONS:-permit_auth_destination,reject}"
 SMTPD_REJECT_UNLISTED_RECIPIENT="${SMTPD_REJECT_UNLISTED_RECIPIENT:-yes}"
 
-# submisstion ingress service
+# submission ingress service
 USE_SUBMISSION="${USE_SUBMISSION:-no}"
 SUBM_PORT="${SUBM_PORT:-submission}"
 SUBM_TLS_SECURITY_LEVEL="${SUBM_TLS_SECURITY_LEVEL:-encrypt}"
-SUBM_TLS_CERT_FILE="${SUBM_TLS_CERT_FILE}"
-SUBM_TLS_KEY_FILE="${SUBM_TLS_KEY_FILE}"
+SUBM_TLS_CERT_FILE="${SUBM_TLS_CERT_FILE:-${ROOT_DIR}/tls/${POSTFIX_DOMAIN}.cert}"
+SUBM_TLS_KEY_FILE="${SUBM_TLS_KEY_FILE:-${ROOT_DIR}/tls/${POSTFIX_DOMAIN}.key}"
 SUBM_SASL_AUTH="${SUBM_SASL_AUTH:yes}"
 SUBM_RELAY_RESTRICTIONS="${SUBM_RELAY_RESTRICTIONS:-permit_sasl_authenticated,reject}"
 SUBM_REJECT_UNLISTED_RECIPIENT="${SUBM_REJECT_UNLISTED_RECIPIENT:-no}"
 SUBM_SASL_DB_FILE="${SUBM_SASL_DB_FILE:-${ROOT_DIR}/sasldb2}"
+SUBM_SASL_PASSWORD="${SUBM_SASL_PASSWORD}"
 
 # check prerequisite variables
-if [ "${USE_SUBMISSION}" == "yes" ] && [ ! -f "${SUBM_SASL_DB_FILE}" ]; then
-    echo "submission's sasl database file not exist at path '${SUBM_SASL_DB_FILE}'"
+if [ -z "${POSTFIX_DOMAIN}" ]; then
+    echo "postfix's domain is null"
     exit 1
+fi
+
+if [ "${USE_SUBMISSION}" == "yes" ]; then
+    if [ ! -f "${SUBM_SASL_DB_FILE}" ] && [ -z "${SUBM_SASL_PASSWORD}" ]; then
+        echo "submission's sasl database file not exist at path '${SUBM_SASL_DB_FILE}', nor password provided"
+        exit 1
+    fi
 fi
 
 # preparing app directories
@@ -224,10 +232,26 @@ ExternalIgnoreList      refile:${OPENDKIM_DIR}/TrustedHosts
 InternalHosts           refile:${OPENDKIM_DIR}/TrustedHosts
 EOF
 
+# fill TrustedHosts
 echo -e "${DKIM_TRUSTED_HOSTS}" > ${OPENDKIM_DIR}/TrustedHosts
+
+# generate DKIM key/text
+if [ ! -f "${DKIM_KEY_FILE}" ]; then
+    cd "${OPENDKIM_DIR}"
+    opendkim-genkey -s mail -d "${POSTFIX_DOMAIN}"
+    chmod 600 mail.private
+    cd -
+    echo DKIM txt generated
+fi
+echo please consult your DNS service provider and add below to your DNS TXT record
+cat ${OPENDKIM_DIR}/mail.txt
 
 # start opendkim server
 opendkim
+if [ $? -ne 0 ]; then
+    echo "error running opendkim"
+    exit 1
+fi
 
 # add SRS config
 cat <<EOF >> ${POSTFIX_DIR}/main.cf
@@ -285,6 +309,10 @@ fi
 #     cmd+=" -N ${SRS_VALIDATE_HASH_MINLEN}"
 # fi
 eval "${cmd}"
+if [ $? -ne 0 ]; then
+    echo "error running postsrsd"
+    exit 1
+fi
 
 # default smtpd ingress config
 cat <<EOF >>${POSTFIX_DIR}/main.cf
@@ -294,46 +322,12 @@ smtpd_relay_restrictions = reject
 smtpd_reject_unlisted_recipient = yes
 EOF
 
-# master config
+# init master.cf
 cat <<EOF > ${POSTFIX_DIR}/master.cf
 # ==========================================================================
 # service type  private unpriv  chroot  wakeup  maxproc command + args
 #               (yes)   (yes)   (no)    (never) (100)
 # ==========================================================================
-EOF
-
-# smtpd in master.cf
-if [ "${USE_SMTPD}" == "${yes}" ]; then
-    if [ -z "${SMTP_PORT+x}"] || [ "${SMTP_PORT}" == "25" ]; then
-        SMTP_PORT=smtp
-    fi
-    cat <<EOF > ${POSTFIX_DIR}/master.cf
-${POSTFIX_SMTP_PORT}    inet n       -       n       -       -       smtpd
-  -o smtpd_reject_unlisted_recipient=${SMTPD_REJECT_UNLISTED_RECIPIENT}
-  -o smtpd_relay_restrictions=${SMTPD_RELAY_RESTRICTIONS}
-EOF
-fi
-
-# submission in master.cf
-if [ "${USE_SUBMISSION}" == 'yes' ]; then
-    if [ -z "${SUBM_PORT+x}" ] || [ "$SUBM_PORT" == "587" ]; then
-        SUBM_PORT=submission
-    fi
-    cat <<EOF >> ${POSTFIX_DIR}/master.cf
-${SUBM_PORT}    inet n       -       n       -       -       smtpd
-  -o syslog_name=postfix/submission
-  -o smtpd_relay_restrictions=${SUBM_RELAY_RESTRICTIONS}
-  -o smtpd_reject_unlisted_recipient=${SUBM_REJECT_UNLISTED_RECIPIENT}
-  -o smtpd_tls_security_level=${SUBM_TLS_SECURITY_LEVEL}
-  -o smtpd_tls_cert_file=${SUBM_TLS_CERT_FILE}
-  -o smtpd_tls_key_file=${SUBM_TLS_KEY_FILE}
-  -o smtpd_sasl_auth_enable=${SUBM_SASL_AUTH}
-  -o milter_macro_daemon_name=ORIGINATING
-EOF
-fi
-
-# other master.cf
-cat <<EOF >> ${POSTFIX_DIR}/master.cf
 pickup    unix  n       -       n       60      1       pickup
 cleanup   unix  n       -       n       -       0       cleanup
 qmgr      unix  n       -       n       300     1       qmgr
@@ -359,14 +353,26 @@ anvil     unix  -       -       n       -       1       anvil
 scache    unix  -       -       n       -       1       scache
 EOF
 
-# submission sasl config
-if [ "${USE_SUBMISSION}" == "yes" ]; then
+# smtpd in master.cf
+if [ "${USE_SMTPD}" == "${yes}" ]; then
+    if [ -z "${SMTP_PORT+x}"] || [ "${SMTP_PORT}" == "25" ]; then
+        SMTP_PORT=smtp
+    fi
+    cat <<EOF > ${POSTFIX_DIR}/master.cf
+${POSTFIX_SMTP_PORT}    inet n       -       n       -       -       smtpd
+  -o smtpd_reject_unlisted_recipient=${SMTPD_REJECT_UNLISTED_RECIPIENT}
+  -o smtpd_relay_restrictions=${SMTPD_RELAY_RESTRICTIONS}
+EOF
+fi
+
+# submission config
+if [ "${USE_SUBMISSION}" == 'yes' ]; then
+    # sasl config
     cat <<EOF >>${POSTFIX_DIR}/main.cf
 
 # smtpd submission sasl config
 smtp_sasl_password_maps = ${SMTP_SASL_PASSWORD_MAPS}
 EOF
-
     mkdir -p /etc/sasl2 && ln -sn /etc/sasl2 "${SASL_CONF_DIR}"
     cat <<EOF >"${SASL_CONF_DIR}"/smtpd.conf
 sasldb_path: ${SUBM_SASL_DB_FILE}
@@ -379,7 +385,56 @@ EOF
         ln -s "${SASL_CONF_DIR}"/smtpd.conf /etc/sasl2/smtpd.conf
     fi
 
+    # tls config
+    if [ ! -f "${SUBM_TLS_KEY_FILE}" ]; then
+        echo "submission's TLS key not exist at '${SUBM_TLS_KEY_FILE}'"
+    fi
+    if [ ! -f "${SUBM_TLS_CERT_FILE}" ]; then
+        echo "submission's TLS certification not exist at '${SUBM_TLS_CERT_FILE}'"
+    fi
+    if [ -f "${SUBM_TLS_KEY_FILE}" ] && [ -f "${SUBM_TLS_CERT_FILE}" ]; then
+        echo "submission's TLS key/cert is provided with ${SUBM_TLS_KEY_FILE} and ${SUBM_TLS_CERT_FILE}"
+    else
+        # create rsa key-pair
+        mkdir -p "${ROOT_DIR}/tls"
+        cd "${ROOT_DIR}/tls"
+        openssl req \
+                -new -newkey rsa:2048 \
+                -days 100000 \
+                -nodes \
+                -x509 \
+                -subj "/C=US/ST=California/L=SanMateo/O=vgu.io/CN=${POSTFIX_DOMAIN}" \
+                -keyout "${POSTFIX_DOMAIN}".key \
+                -out "${POSTFIX_DOMAIN}".cert
+        chmod 400 "${POSTFIX_DOMAIN}".key
+        chmod 400 "${POSTFIX_DOMAIN}".cert
+        cd -
+        echo "submisstion's TLS key/cert generated"
+    fi
+
     # user shoud provide sasldb2 file in ${SUBM_SASL_DB_FILE}
+    if [ ! -f "${SUBM_SASL_DB_FILE}" ] && [ -n "${SUBM_SASL_PASSWORD}" ]; then
+        echo "generate sasl db file from provided password .."
+        echo -n "${SUBM_SASL_PASSWORD}" | saslpasswd2 -f "${SUBM_SASL_DB_FILE}" -c -u example.com smtp
+    fi
+    chmod 400 "${SUBM_SASL_DB_FILE}"
+
+    # in master.cf
+    if [ -z "${SUBM_PORT+x}" ] || [ "$SUBM_PORT" == "587" ]; then
+        SUBM_PORT=submission
+    fi
+    cat <<EOF >> ${POSTFIX_DIR}/master.cf
+${SUBM_PORT}    inet n       -       n       -       -       smtpd
+  -o syslog_name=postfix/submission
+  -o smtpd_relay_restrictions=${SUBM_RELAY_RESTRICTIONS}
+  -o smtpd_reject_unlisted_recipient=${SUBM_REJECT_UNLISTED_RECIPIENT}
+  -o smtpd_tls_security_level=${SUBM_TLS_SECURITY_LEVEL}
+  -o smtpd_tls_cert_file=${SUBM_TLS_CERT_FILE}
+  -o smtpd_tls_key_file=${SUBM_TLS_KEY_FILE}
+  -o smtpd_sasl_auth_enable=${SUBM_SASL_AUTH}
+  -o milter_macro_daemon_name=ORIGINATING
+EOF
+
 fi
 
 # run postfix

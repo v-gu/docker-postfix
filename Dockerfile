@@ -38,11 +38,7 @@ ENV DEFAULT_TRANSPORT                   "smtp"
 ENV TRANSPORT_MAPS                      ""
 
 # DKIM
-ENV DKIM_LISTEN_ADDR                    "127.0.0.1"
-ENV DKIM_LISTEN_PORT                    "8891"
 ENV DKIM_DOMAIN                         "${POSTFIX_DOMAIN}"
-ENV DKIM_SELECTOR                       "mail"
-ENV DKIM_KEY_FILE                       "/etc/opendkim.d/${DKIM_SELECTOR}.private"
 ENV DKIM_TRUSTED_HOSTS                  "127.0.0.1\n::1\nlocalhost\n\n\*.example.com"
 
 ENV SRS_LISTEN_ADDR                     "127.0.0.1"
@@ -67,19 +63,23 @@ ENV SMTPD_REJECT_UNLISTED_RECIPIENT     yes
 ENV USE_SUBMISSION                      no
 ENV SUBM_PORT                           587
 ENV SUBM_TLS_SECURITY_LEVEL             encrypt
-ENV SUBM_TLS_CERT_FILE                  ""
-ENV SUBM_TLS_KEY_FILE                   ""
+ENV SUBM_TLS_CERT_FILE                  "${ROOT_DIR}/tls/${POSTFIX_DOMAIN}.cert"
+ENV SUBM_TLS_KEY_FILE                   "${ROOT_DIR}/tls/${POSTFIX_DOMAIN}.key"
 ENV SUBM_SASL_AUTH                      yes
 ENV SUBM_RELAY_RESTRICTIONS             permit_sasl_authenticated,reject
 ENV SUBM_REJECT_UNLISTED_RECIPIENT      no
 ENV SUBM_SASL_DB_FILE                   "${ROOT_DIR}/sasldb2"
+ENV SUBM_SASL_PASSWORD                  ""
 
 # define service ports
 EXPOSE $SMTPD_PORT/tcp \
-       $SMTPD_SUBM_PORT/tcp
+       $SUBM_PORT/tcp
 
 # install software stack
 RUN set -ex && \
-    DEP='rsyslog cyrus-sasl postfix postsrsd opendkim' && \
+    DEP='rsyslog cyrus-sasl postfix postsrsd opendkim opendkim-utils' && \
     apk add --update --no-cache $DEP && \
     rm -rf /var/cache/apk/*
+
+VOLUME /etc/opendkim
+VOLUME "${ROOT_DIR}"/tls
