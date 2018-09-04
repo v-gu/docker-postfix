@@ -355,7 +355,7 @@ scache    unix  -       -       n       -       1       scache
 EOF
 
 # smtpd in master.cf
-if [ "${USE_SMTPD}" == "${yes}" ]; then
+if [ "${USE_SMTPD}" == "yes" ]; then
     if [ -z "${SMTP_PORT+x}"] || [ "${SMTP_PORT}" == "25" ]; then
         SMTP_PORT=smtp
     fi
