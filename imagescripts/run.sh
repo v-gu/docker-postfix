@@ -69,7 +69,8 @@ SUBM_TLS_KEY_FILE="${SUBM_TLS_KEY_FILE:-${ROOT_DIR}/tls/${POSTFIX_DOMAIN}.key}"
 SUBM_SASL_AUTH="${SUBM_SASL_AUTH:yes}"
 SUBM_RELAY_RESTRICTIONS="${SUBM_RELAY_RESTRICTIONS:-permit_sasl_authenticated,reject}"
 SUBM_REJECT_UNLISTED_RECIPIENT="${SUBM_REJECT_UNLISTED_RECIPIENT:-no}"
-SUBM_SASL_DB_FILE="${SUBM_SASL_DB_FILE:-${ROOT_DIR}/sasldb2}"
+SUBM_SASL_DB_FILE="${SUBM_SASL_DB_FILE:-${ROOT_DIR}/sasldb/sasldb2}"
+SUBM_SASL_USERNAME="${SUBM_SASL_USERNAME:-smtp}"
 SUBM_SASL_PASSWORD="${SUBM_SASL_PASSWORD}"
 
 # check prerequisite variables
@@ -415,7 +416,8 @@ EOF
     # user shoud provide sasldb2 file in ${SUBM_SASL_DB_FILE}
     if [ ! -f "${SUBM_SASL_DB_FILE}" ] && [ -n "${SUBM_SASL_PASSWORD}" ]; then
         echo "generate sasl db file from provided password .."
-        echo -n "${SUBM_SASL_PASSWORD}" | saslpasswd2 -f "${SUBM_SASL_DB_FILE}" -c -u example.com smtp
+        mkdir -p "$(dirname ${SUBM_SASL_DB_FILE})"
+        echo -n "${SUBM_SASL_PASSWORD}" | saslpasswd2 -f "${SUBM_SASL_DB_FILE}" -c -u "${POSTFIX_DOMAIN}" "${SUBM_SASL_USERNAME}"
     fi
     chmod 400 "${SUBM_SASL_DB_FILE}"
 
