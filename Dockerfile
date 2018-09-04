@@ -63,8 +63,6 @@ ENV SMTPD_REJECT_UNLISTED_RECIPIENT     yes
 ENV USE_SUBMISSION                      no
 ENV SUBM_PORT                           587
 ENV SUBM_TLS_SECURITY_LEVEL             encrypt
-ENV SUBM_TLS_CERT_FILE                  "${ROOT_DIR}/tls/${POSTFIX_DOMAIN}.cert"
-ENV SUBM_TLS_KEY_FILE                   "${ROOT_DIR}/tls/${POSTFIX_DOMAIN}.key"
 ENV SUBM_SASL_AUTH                      yes
 ENV SUBM_RELAY_RESTRICTIONS             permit_sasl_authenticated,reject
 ENV SUBM_REJECT_UNLISTED_RECIPIENT      no
