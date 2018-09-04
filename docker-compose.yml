@@ -26,6 +26,7 @@ services:
         ::1
         localhost
         google.com
+      USE_SMTPD: "yes"
       USE_SUBMISSION: "yes"
       SUBM_SASL_PASSWORD: testpassword
 
