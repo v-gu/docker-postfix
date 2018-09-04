@@ -356,11 +356,11 @@ EOF
 
 # smtpd in master.cf
 if [ "${USE_SMTPD}" == "yes" ]; then
-    if [ -z "${SMTP_PORT+x}"] || [ "${SMTP_PORT}" == "25" ]; then
+    if [ -z "${SMTP_PORT}" ] || [ "${SMTP_PORT}" == "25" ]; then
         SMTP_PORT=smtp
     fi
     cat <<EOF > ${POSTFIX_DIR}/master.cf
-${POSTFIX_SMTP_PORT}    inet n       -       n       -       -       smtpd
+${SMTP_PORT}    inet n       -       n       -       -       smtpd
   -o smtpd_reject_unlisted_recipient=${SMTPD_REJECT_UNLISTED_RECIPIENT}
   -o smtpd_relay_restrictions=${SMTPD_RELAY_RESTRICTIONS}
 EOF
@@ -422,7 +422,7 @@ EOF
     chmod 400 "${SUBM_SASL_DB_FILE}"
 
     # in master.cf
-    if [ -z "${SUBM_PORT+x}" ] || [ "$SUBM_PORT" == "587" ]; then
+    if [ -z "${SUBM_PORT}" ] || [ "$SUBM_PORT" == "587" ]; then
         SUBM_PORT=submission
     fi
     cat <<EOF >> ${POSTFIX_DIR}/master.cf
