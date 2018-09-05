@@ -26,6 +26,10 @@ ENV VIRTUAL_ALIAS_MAPS                  ""
 # virtual alias mainbox domain class
 ENV VIRTUAL_MAILBOX_DOMAINS             ""
 ENV VIRTUAL_MAILBOX_MAPS                ""
+ENV VIRTUAL_MAILBOX_BASE                "${ROOT_DIR}/mail"
+ENV VIRTUAL_MINIMUM_UID                 1
+ENV VIRTUAL_UID_MAPS                    "static:5000"
+ENV VIRTUAL_GID_MAPS                    "static:5000"
 
 # relay domain class
 ENV RELAY_DOMAINS                       ""

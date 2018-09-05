@@ -21,6 +21,10 @@ VIRTUAL_ALIAS_MAPS="${VIRTUAL_ALIAS_MAPS}"
 # virtual alias mainbox domain class
 VIRTUAL_MAILBOX_DOMAINS="${VIRTUAL_MAILBOX_DOMAINS}"
 VIRTUAL_MAILBOX_MAPS="${VIRTUAL_MAILBOX_MAPS}"
+VIRTUAL_MAILBOX_BASE="${VIRTUAL_MAILBOX_BASE:-${ROOT_DIR}/mail}"
+VIRTUAL_MINIMUM_UID="${VIRTUAL_MINIMUM_UID:-1}"
+VIRTUAL_UID_MAPS="${VIRTUAL_UID_MAPS:-static:5000}"
+VIRTUAL_GID_MAPS="${VIRTUAL_GID_MAPS:-static:5000}"
 
 # relay domain class
 RELAY_DOMAINS="${RELAY_DOMAINS}"
@@ -150,11 +154,24 @@ if [ -n "${VIRTUAL_MAILBOX_DOMAINS}" ]; then
 # virtual mailbox domain class
 virtual_mailbox_domains = ${VIRTUAL_MAILBOX_DOMAINS}
 virtual_mailbox_maps = hash:${POSTFIX_DIR}/vmailbox
+virtual_mailbox_base = "${VIRTUAL_MAILBOX_BASE}"
+virtual_minimum_uid = "${VIRTUAL_MINIMUM_UID}"
+virtual_uid_maps = "${VIRTUAL_UID_MAPS}"
+virtual_gid_maps = "${VIRTUAL_GID_MAPS}"
 EOF
     # add vmailbox db entries
     echo -e "${VIRTUAL_MAILBOX_MAPS}" > ${POSTFIX_DIR}/vmailbox
     postmap ${POSTFIX_DIR}/vmailbox
     rm ${POSTFIX_DIR}/vmailbox
+
+    # add static user
+    addgroup -g "${VIRTUAL_GID_MAPS##*:}" email
+    adduser -u "${VIRTUAL_UID_MAPS##*:}" -G email -H -D email
+
+    # add mailbox directory
+    mkdir -p "${VIRTUAL_MAILBOX_BASE}"
+    chmod -R g+s,o-rwX "${VIRTUAL_MAILBOX_BASE}"
+    chown -R postfix:email "${VIRTUAL_MAILBOX_BASE}"
 fi
 
 # relay domain class
