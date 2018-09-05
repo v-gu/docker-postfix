@@ -49,7 +49,6 @@ ENV SRS_FORWARD_PORT                    10001
 ENV SRS_REVERSE_PORT                    10002
 ENV SRS_SEPARATOR                       "="
 ENV SRS_TIMEOUT                         1800
-ENV SRS_SECRET_FILE                     "${POSTSRSD_DIR}/postsrsd.secret"
 ENV SRS_PID_FILE                        ""
 ENV SRS_RUN_AS                          ""
 ENV SRS_CHROOT                          ""

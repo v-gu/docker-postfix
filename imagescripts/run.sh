@@ -438,6 +438,7 @@ EOF
         echo -n "${SUBM_SASL_PASSWORD}" | saslpasswd2 -f "${SUBM_SASL_DB_FILE}" -c -u "${POSTFIX_DOMAIN}" "${SUBM_SASL_USERNAME}"
     fi
     chmod 400 "${SUBM_SASL_DB_FILE}"
+    chown postfix:postfix "${SUBM_SASL_DB_FILE}"
 
     # in master.cf
     if [ -z "${SUBM_PORT}" ] || [ "$SUBM_PORT" == "587" ]; then
