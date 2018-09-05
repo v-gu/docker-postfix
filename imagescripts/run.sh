@@ -158,10 +158,10 @@ if [ -n "${VIRTUAL_MAILBOX_DOMAINS}" ]; then
 # virtual mailbox domain class
 virtual_mailbox_domains = ${VIRTUAL_MAILBOX_DOMAINS}
 virtual_mailbox_maps = hash:${POSTFIX_DIR}/vmailbox
-virtual_mailbox_base = "${VIRTUAL_MAILBOX_BASE}"
-virtual_minimum_uid = "${VIRTUAL_MINIMUM_UID}"
-virtual_uid_maps = "${VIRTUAL_UID_MAPS}"
-virtual_gid_maps = "${VIRTUAL_GID_MAPS}"
+virtual_mailbox_base = ${VIRTUAL_MAILBOX_BASE}
+virtual_minimum_uid = ${VIRTUAL_MINIMUM_UID}
+virtual_uid_maps = ${VIRTUAL_UID_MAPS}
+virtual_gid_maps = ${VIRTUAL_GID_MAPS}
 EOF
     # add vmailbox db entries
     echo -e "${VIRTUAL_MAILBOX_MAPS}" > ${POSTFIX_DIR}/vmailbox
@@ -175,7 +175,7 @@ EOF
     # add mailbox directory
     mkdir -p "${VIRTUAL_MAILBOX_BASE}"
     chmod -R g+s,o-rwX "${VIRTUAL_MAILBOX_BASE}"
-    chown -R postfix:email "${VIRTUAL_MAILBOX_BASE}"
+    chown -R email:email "${VIRTUAL_MAILBOX_BASE}"
 fi
 
 # relay domain class
