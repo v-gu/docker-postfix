@@ -38,6 +38,10 @@ SENDER_DEPENDENT_DEFAULT_TRANSPORT_MAPS="${SENDER_DEPENDENT_DEFAULT_TRANSPORT_MA
 DEFAULT_TRANSPORT="${DEFAULT_TRANSPORT:-smtp}"
 TRANSPORT_MAPS="${TRANSPORT_MAPS}"
 
+# BCC
+SENDER_BCC_MAPS="${SENDER_BCC_MAPS}"
+RECIPIENT_BCC_MAPS="${RECIPIENT_BCC_MAPS}"
+
 # DKIM
 DKIM_LISTEN_ADDR="${DKIM_LISTEN_ADDR:-127.0.0.1}"
 DKIM_LISTEN_PORT="${DKIM_LISTEN_PORT:-9901}"
@@ -222,6 +226,26 @@ EOF
     echo -e "${TRANSPORT_MAPS}" > ${POSTFIX_DIR}/transport
     postmap ${POSTFIX_DIR}/transport
     rm ${POSTFIX_DIR}/transport
+fi
+
+# bcc
+if [ -n "${SENDER_BCC_MAPS}" ]; then
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+sender_bcc_maps = hash:${POSTFIX_DIR}/sender_bcc
+EOF
+    # add db entries
+    echo -e "${SENDER_BCC_MAPS}" > ${POSTFIX_DIR}/sender_bcc
+    postmap ${POSTFIX_DIR}/sender_bcc
+    rm ${POSTFIX_DIR}/sender_bcc
+fi
+if [ -n "${RECIPIENT_BCC_MAPS}" ]; then
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+recipient_bcc_maps = hash:${POSTFIX_DIR}/recipient_bcc
+EOF
+    # add db entries
+    echo -e "${RECIPIENT_BCC_MAPS}" > ${POSTFIX_DIR}/recipient_bcc
+    postmap ${POSTFIX_DIR}/recipient_bcc
+    rm ${POSTFIX_DIR}/recipient_bcc
 fi
 
 # add opendkim config

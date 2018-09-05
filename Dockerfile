@@ -43,6 +43,10 @@ ENV SENDER_DEPENDENT_DEFAULT_TRANSPORT_MAPS ""
 ENV DEFAULT_TRANSPORT                   "smtp"
 ENV TRANSPORT_MAPS                      ""
 
+# BCC
+ENV SENDER_BCC_MAPS                     ""
+ENV RECIPIENT_BCC_MAPS                  ""
+
 # DKIM
 ENV DKIM_DOMAIN                         "${POSTFIX_DOMAIN}"
 ENV DKIM_TRUSTED_HOSTS                  "127.0.0.1\n::1\nlocalhost\n\n\*.example.com"
