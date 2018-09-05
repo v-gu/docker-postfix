@@ -15,9 +15,11 @@ POSTFIX_ORIGIN="${POSTFIX_ORIGIN:-${POSTFIX_DOMAIN}}"
 ALIAS_MAPS="${ALIAS_MAPS}"
 
 # virtual alias domain class
+VIRTUAL_ALIAS_DOMAINS="${VIRTUAL_ALIAS_DOMAINS}"
 VIRTUAL_ALIAS_MAPS="${VIRTUAL_ALIAS_MAPS}"
 
 # virtual alias mainbox domain class
+VIRTUAL_MAILBOX_DOMAINS="${VIRTUAL_MAILBOX_DOMAINS}"
 VIRTUAL_MAILBOX_MAPS="${VIRTUAL_MAILBOX_MAPS}"
 
 # relay domain class
@@ -46,7 +48,7 @@ SRS_FORWARD_PORT="${SRS_FORWARD_PORT:-10001}"
 SRS_REVERSE_PORT="${SRS_REVERSE_PORT:-10002}"
 SRS_SEPARATOR="${SRS_SEPARATOR:-=}"
 SRS_TIMEOUT="${SRS_TIMEOUT:-1800}"
-SRS_SECRET_FILE="${SRS_SECRET:-${POSTSRSD_DIR}/postsrsd.secret}"
+SRS_SECRET_FILE="${SRS_SECRET_FILE}:-${POSTSRSD_DIR}/postsrsd.secret}"
 SRS_PID_FILE="${SRS_PID_FILE}"
 SRS_RUN_AS="${SRS_RUN_AS}"
 SRS_CHROOT="${SRS_CHROOT}"
@@ -132,6 +134,7 @@ if [ -n "${VIRTUAL_ALIAS_MAPS}" ]; then
     cat <<EOF >>${POSTFIX_DIR}/main.cf
 
 # virtual alias domain class
+virtual_alias_domains = ${VIRTUAL_ALIAS_DOMAINS}
 virtual_alias_maps = hash:${POSTFIX_DIR}/virtual
 EOF
     # add virtual db entries
@@ -140,16 +143,30 @@ EOF
     rm ${POSTFIX_DIR}/virtual
 fi
 
+# virtual mailbox domain class
+if [ -n "${VIRTUAL_MAILBOX_DOMAINS}" ]; then
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+
+# virtual mailbox domain class
+virtual_mailbox_domains = ${VIRTUAL_MAILBOX_DOMAINS}
+virtual_mailbox_maps = hash:${POSTFIX_DIR}/vmailbox
+EOF
+    # add vmailbox db entries
+    echo -e "${VIRTUAL_MAILBOX_MAPS}" > ${POSTFIX_DIR}/vmailbox
+    postmap ${POSTFIX_DIR}/vmailbox
+    rm ${POSTFIX_DIR}/vmailbox
+fi
+
 # relay domain class
 if [ -n "${RELAY_DOMAIN}" ]; then
     cat <<EOF >>${POSTFIX_DIR}/main.cf
 
 # relay domain class
 relay_domains = "${RELAY_DOMAINS}"
-RELAY_RECIPIENT_MAPS = hash:${POSTFIX_DIR}/relay_recipient
-SENDER_DEPENDENT_RELAYHOST_MAPS = hash:${POSTFIX_DIR}/sender_dependent_relayhost
-RELAY_TRANSPORT = "${RELAY_TRANSPORT}"
-RELAY_HOST = "${RELAY_HOST}"
+relay_recipient_maps = hash:${POSTFIX_DIR}/relay_recipient
+sender_dependent_relayhost_maps = hash:${POSTFIX_DIR}/sender_dependent_relayhost
+relay_transport = "${RELAY_TRANSPORT}"
+relay_host = "${RELAY_HOST}"
 EOF
     # add relay recipient db entries
     echo -e "${RELAY_RECIPIENT_MAPS}" > ${POSTFIX_DIR}/relay_recipient
@@ -265,7 +282,7 @@ recipient_canonical_classes= envelope_recipient,header_recipient
 EOF
 
 # prepare postsrsd
-ln -sn /etc/postsrsd ${POSTSRSD_DIR}
+ln -sn /etc/postsrsd "${POSTSRSD_DIR}"
 echo $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) > "${SRS_SECRET_FILE}"
 
 # run postsrsd
@@ -288,8 +305,8 @@ fi
 if [ -n "${SRS_TIMEOUT}" ]; then
     cmd+=" -t ${SRS_TIMEOUT}"
 fi
-if [ -n "${SRS_SECRET}" ]; then
-    cmd+=" -s ${SRS_SECRET}"
+if [ -n "${SRS_SECRET_FILE}" ]; then
+    cmd+=" -s ${SRS_SECRET_FILE}"
 fi
 if [ -n "${SRS_PID_FILE}" ]; then
     cmd+=" -p ${SRS_PID_FILE}"
@@ -409,6 +426,7 @@ EOF
                 -out "${POSTFIX_DOMAIN}".cert
         chmod 400 "${POSTFIX_DOMAIN}".key
         chmod 400 "${POSTFIX_DOMAIN}".cert
+        chown postfix:postfix *
         cd -
         echo "submisstion's TLS key/cert generated"
     fi

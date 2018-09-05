@@ -20,9 +20,11 @@ ENV POSTFIX_ORIGIN                      "${POSTFIX_DOMAIN}"
 ENV ALIAS_MAPS                          ""
 
 # virtual local alias
+ENV VIRTUAL_ALIAS_DOMAINS               ""
 ENV VIRTUAL_ALIAS_MAPS                  ""
 
 # virtual alias mainbox domain class
+ENV VIRTUAL_MAILBOX_DOMAINS             ""
 ENV VIRTUAL_MAILBOX_MAPS                ""
 
 # relay domain class
@@ -47,7 +49,7 @@ ENV SRS_FORWARD_PORT                    10001
 ENV SRS_REVERSE_PORT                    10002
 ENV SRS_SEPARATOR                       "="
 ENV SRS_TIMEOUT                         1800
-ENV SRS_SECRET                          "${POSTSRSD_DIR}/postsrsd.secret"
+ENV SRS_SECRET_FILE                     "${POSTSRSD_DIR}/postsrsd.secret"
 ENV SRS_PID_FILE                        ""
 ENV SRS_RUN_AS                          ""
 ENV SRS_CHROOT                          ""
