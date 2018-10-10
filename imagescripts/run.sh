@@ -83,6 +83,9 @@ SUBM_SASL_DB_FILE="${SUBM_SASL_DB_FILE:-${ROOT_DIR}/sasldb/sasldb2}"
 SUBM_SASL_USERNAME="${SUBM_SASL_USERNAME:-smtp}"
 SUBM_SASL_PASSWORD="${SUBM_SASL_PASSWORD}"
 
+# smtp service
+SMTP_TLS_SECURITY_LEVEL="${SMTP_TLS_SECURITY_LEVEL:-may}"
+
 # check prerequisite variables
 if [ -z "${POSTFIX_DOMAIN}" ]; then
     echo "postfix's domain is null"
@@ -498,6 +501,13 @@ ${SUBM_PORT}    inet n       -       n       -       -       smtpd
 EOF
 
 fi
+
+# smtp config
+cat <<EOF >${POSTFIX_DIR}/main.cf
+
+# smtp settings
+smtp_tls_security_level = ${SMTP_TLS_SECURITY_LEVEL}
+EOF
 
 # run postfix
 postfix start

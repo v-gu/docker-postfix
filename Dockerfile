@@ -79,6 +79,8 @@ ENV SUBM_SASL_DB_FILE                   "${ROOT_DIR}/sasldb/sasldb2"
 ENV SUBM_SASL_USERNAME                  "smtp"
 ENV SUBM_SASL_PASSWORD                  ""
 
+ENV SMTP_TLS_SECURITY_LEVEL             "may"
+
 # define service ports
 EXPOSE $SMTPD_PORT/tcp \
        $SUBM_PORT/tcp
