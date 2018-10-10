@@ -503,7 +503,7 @@ EOF
 fi
 
 # smtp config
-cat <<EOF >${POSTFIX_DIR}/main.cf
+cat <<EOF >>${POSTFIX_DIR}/main.cf
 
 # smtp settings
 smtp_tls_security_level = ${SMTP_TLS_SECURITY_LEVEL}
