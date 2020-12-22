@@ -2,7 +2,7 @@
 #
 # Dockerfile for postfix
 #
-# need init: true
+# need init: false
 # need additional files:
 #   - TLS Cert and key
 #   - SASLDB file
@@ -48,8 +48,8 @@ ENV SENDER_BCC_MAPS                     ""
 ENV RECIPIENT_BCC_MAPS                  ""
 
 # DKIM
-ENV DKIM_DOMAIN                         "${POSTFIX_DOMAIN}"
-ENV DKIM_TRUSTED_HOSTS                  "127.0.0.1\n::1\nlocalhost\n\n\*.example.com"
+ENV DKIM_LISTEN_ADDR                    "0.0.0.0"
+ENV DKIM_LISTEN_PORT                    9901
 
 ENV SRS_LISTEN_ADDR                     "127.0.0.1"
 ENV SRS_DOMAIN                          "${POSTFIX_DOMAIN}"

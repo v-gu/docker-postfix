@@ -29,6 +29,8 @@ services:
       USE_SMTPD: "yes"
       USE_SUBMISSION: "yes"
       SUBM_SASL_PASSWORD: testpassword
+      DKIM_LISTEN_ADDR: <dkim_server_address>
+      DKIM_LISTEN_PORT: <dkim_server_port>
 
 volumes:
   tls:
