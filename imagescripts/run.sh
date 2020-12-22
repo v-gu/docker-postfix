@@ -121,12 +121,12 @@ if [ -n "${ALIAS_MAPS}" ]; then
     cat <<EOF >>${POSTFIX_DIR}/main.cf
 
 # local domain class
-alias_maps = hash:${POSTFIX_DIR}/alias
+alias_maps = lmdb:${POSTFIX_DIR}/alias
 EOF
 
     # add alias db entries
     echo -e "${ALIAS_MAPS}" > ${POSTFIX_DIR}/alias
-    postmap ${POSTFIX_DIR}/alias
+    postmap lmdb:${POSTFIX_DIR}/alias
     rm ${POSTFIX_DIR}/alias
 fi
 
@@ -136,11 +136,11 @@ if [ -n "${VIRTUAL_ALIAS_MAPS}" ]; then
 
 # virtual alias domain class
 virtual_alias_domains = ${VIRTUAL_ALIAS_DOMAINS}
-virtual_alias_maps = hash:${POSTFIX_DIR}/virtual
+virtual_alias_maps = lmdb:${POSTFIX_DIR}/virtual
 EOF
     # add virtual db entries
     echo -e "${VIRTUAL_ALIAS_MAPS}" > ${POSTFIX_DIR}/virtual
-    postmap ${POSTFIX_DIR}/virtual
+    postmap lmdb:${POSTFIX_DIR}/virtual
     rm ${POSTFIX_DIR}/virtual
 fi
 
@@ -150,16 +150,21 @@ if [ -n "${VIRTUAL_MAILBOX_DOMAINS}" ]; then
 
 # virtual mailbox domain class
 virtual_mailbox_domains = ${VIRTUAL_MAILBOX_DOMAINS}
-virtual_mailbox_maps = hash:${POSTFIX_DIR}/vmailbox
 virtual_mailbox_base = ${VIRTUAL_MAILBOX_BASE}
 virtual_minimum_uid = ${VIRTUAL_MINIMUM_UID}
 virtual_uid_maps = ${VIRTUAL_UID_MAPS}
 virtual_gid_maps = ${VIRTUAL_GID_MAPS}
 EOF
-    # add vmailbox db entries
-    echo -e "${VIRTUAL_MAILBOX_MAPS}" > ${POSTFIX_DIR}/vmailbox
-    postmap ${POSTFIX_DIR}/vmailbox
-    rm ${POSTFIX_DIR}/vmailbox
+
+    if [[ -n "${VIRTUAL_MAILBOX_MAPS}" ]]; then
+        cat <<EOF >>${POSTFIX_DIR}/main.cf
+virtual_mailbox_maps = lmdb:${POSTFIX_DIR}/vmailbox
+EOF
+        # add vmailbox db entries
+        echo -e "${VIRTUAL_MAILBOX_MAPS}" > ${POSTFIX_DIR}/vmailbox
+        postmap lmdb:${POSTFIX_DIR}/vmailbox
+        rm ${POSTFIX_DIR}/vmailbox
+    fi
 
     # add static user
     addgroup -g "${VIRTUAL_GID_MAPS##*:}" email
@@ -169,6 +174,13 @@ EOF
     mkdir -p "${VIRTUAL_MAILBOX_BASE}"
     chmod -R g+s,o-rwX "${VIRTUAL_MAILBOX_BASE}"
     chown -R email:email "${VIRTUAL_MAILBOX_BASE}"
+
+    # check if should use dovecot
+    if [[ "${USE_DOVECOT_FOR_VIRTUAL}" == "true" ]]; then
+        cat <<EOF >>${POSTFIX_DIR}/main.cf
+virtual_transport = lmtp:inet:${DOVECOT_HOST}:${DOVECOT_LMTP_PORT}
+EOF
+    fi
 fi
 
 # relay domain class
@@ -177,18 +189,18 @@ if [ -n "${RELAY_DOMAIN}" ]; then
 
 # relay domain class
 relay_domains = "${RELAY_DOMAINS}"
-relay_recipient_maps = hash:${POSTFIX_DIR}/relay_recipient
-sender_dependent_relayhost_maps = hash:${POSTFIX_DIR}/sender_dependent_relayhost
+relay_recipient_maps = lmdb:${POSTFIX_DIR}/relay_recipient
+sender_dependent_relayhost_maps = lmdb:${POSTFIX_DIR}/sender_dependent_relayhost
 relay_transport = "${RELAY_TRANSPORT}"
 relay_host = "${RELAY_HOST}"
 EOF
     # add relay recipient db entries
     echo -e "${RELAY_RECIPIENT_MAPS}" > ${POSTFIX_DIR}/relay_recipient
-    postmap ${POSTFIX_DIR}/relay_recipient
+    postmap lmdb:${POSTFIX_DIR}/relay_recipient
     rm ${POSTFIX_DIR}/relay_recipient
     # add sender dependent relayhost db entries
     echo -e "${SENDER_DEPENDENT_RELAYHOST_MAPS}" > ${POSTFIX_DIR}/sender_dependent_relayhost
-    postmap ${POSTFIX_DIR}/sender_dependent_relayhost
+    postmap lmdb:${POSTFIX_DIR}/sender_dependent_relayhost
     rm ${POSTFIX_DIR}/sender_dependent_relayhost
 fi
 
@@ -199,11 +211,11 @@ cat <<EOF >>${POSTFIX_DIR}/main.cf
 EOF
 if [ -n "${SENDER_DEPENDENT_DEFAULT_TRANSPORT_MAPS}" ]; then
     cat <<EOF >>${POSTFIX_DIR}/main.cf
-sender_dependent_default_transport_maps = hash:${POSTFIX_DIR}/sender_dependent_default_transport
+sender_dependent_default_transport_maps = lmdb:${POSTFIX_DIR}/sender_dependent_default_transport
 EOF
     # add db entries
     echo -e "${SENDER_DEPENDENT_DEFAULT_TRANSPORT_MAPS}" > ${POSTFIX_DIR}/sender_dependent_default_transport
-    postmap ${POSTFIX_DIR}/sender_dependent_default_transport
+    postmap lmdb:${POSTFIX_DIR}/sender_dependent_default_transport
     rm ${POSTFIX_DIR}/sender_dependent_default_transport
 fi
 
@@ -213,31 +225,31 @@ EOF
 
 if [ -n "${TRANSPORT_MAPS}" ]; then
     cat <<EOF >>${POSTFIX_DIR}/main.cf
-transport_maps = hash:${POSTFIX_DIR}/transport
+transport_maps = lmdb:${POSTFIX_DIR}/transport
 EOF
     # add db entries
     echo -e "${TRANSPORT_MAPS}" > ${POSTFIX_DIR}/transport
-    postmap ${POSTFIX_DIR}/transport
+    postmap lmdb:${POSTFIX_DIR}/transport
     rm ${POSTFIX_DIR}/transport
 fi
 
 # bcc
 if [ -n "${SENDER_BCC_MAPS}" ]; then
     cat <<EOF >>${POSTFIX_DIR}/main.cf
-sender_bcc_maps = hash:${POSTFIX_DIR}/sender_bcc
+sender_bcc_maps = lmdb:${POSTFIX_DIR}/sender_bcc
 EOF
     # add db entries
     echo -e "${SENDER_BCC_MAPS}" > ${POSTFIX_DIR}/sender_bcc
-    postmap ${POSTFIX_DIR}/sender_bcc
+    postmap lmdb:${POSTFIX_DIR}/sender_bcc
     rm ${POSTFIX_DIR}/sender_bcc
 fi
 if [ -n "${RECIPIENT_BCC_MAPS}" ]; then
     cat <<EOF >>${POSTFIX_DIR}/main.cf
-recipient_bcc_maps = hash:${POSTFIX_DIR}/recipient_bcc
+recipient_bcc_maps = lmdb:${POSTFIX_DIR}/recipient_bcc
 EOF
     # add db entries
     echo -e "${RECIPIENT_BCC_MAPS}" > ${POSTFIX_DIR}/recipient_bcc
-    postmap ${POSTFIX_DIR}/recipient_bcc
+    postmap lmdb:${POSTFIX_DIR}/recipient_bcc
     rm ${POSTFIX_DIR}/recipient_bcc
 fi
 
@@ -363,15 +375,6 @@ if [ "${USE_SUBMISSION}" == 'yes' ]; then
         echo "submission's TLS key/cert generated"
     fi
 
-#     # user shoud provide sasldb2 file in ${SUBM_SASL_DB_FILE}
-#     if [ ! -f "${SUBM_SASL_DB_FILE}" ] && [ -n "${SUBM_SASL_PASSWORD}" ]; then
-#         echo "generate sasl db file from provided password .."
-#         mkdir -p "$(dirname ${SUBM_SASL_DB_FILE})"
-#         echo -n "${SUBM_SASL_PASSWORD}" | saslpasswd2 -f "${SUBM_SASL_DB_FILE}" -c -u "${POSTFIX_DOMAIN}" "${SUBM_SASL_USERNAME}"
-#     fi
-#     chmod 400 "${SUBM_SASL_DB_FILE}"
-#     chown postfix:postfix "${SUBM_SASL_DB_FILE}"
-
     # in master.cf
     if [ -z "${SUBM_PORT}" ] || [ "$SUBM_PORT" == "587" ]; then
         SUBM_PORT=submission
@@ -388,6 +391,13 @@ ${SUBM_PORT}    inet n       -       n       -       -       smtpd
   -o milter_macro_daemon_name=ORIGINATING
 EOF
 
+    if [[ "${USE_DOVECOT_FOR_SUBMISSION_AUTH}" == "true" || "${USE_DOVECOT_FOR_SUBMISSION_AUTH}" == "yes" ]]; then
+        cat <<EOF >> ${POSTFIX_DIR}/main.cf
+  -o smtpd_sasl_type=dovecot
+  -o smtpd_sasl_path=inet:${DOVECOT_HOST}:${DOVECOT_AUTH_PORT}
+  -o smtpd_sasl_security_options=noanonymous
+EOF
+    fi
 fi
 
 # smtp config

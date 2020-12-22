@@ -27,7 +27,7 @@ ENV VIRTUAL_ALIAS_MAPS                  ""
 ENV VIRTUAL_MAILBOX_DOMAINS             ""
 ENV VIRTUAL_MAILBOX_MAPS                ""
 ENV VIRTUAL_MAILBOX_BASE                "${ROOT_DIR}/mail"
-ENV VIRTUAL_MINIMUM_UID                 1
+ENV VIRTUAL_MINIMUM_UID                 2000
 ENV VIRTUAL_UID_MAPS                    "static:5000"
 ENV VIRTUAL_GID_MAPS                    "static:5000"
 
@@ -72,6 +72,15 @@ ENV SUBM_SASL_USERNAME                  "smtp"
 ENV SUBM_SASL_PASSWORD                  ""
 
 ENV SMTP_TLS_SECURITY_LEVEL             "may"
+
+# Dovecot
+ENV USE_DOVECOT_FOR_LOCAL               "false"
+ENV USE_DOVECOT_FOR_VIRTUAL             "false"
+ENV USE_DOVECOT_FOR_SUBMISSION_AUTH     "false"
+ENV DOVECOT_HOST                        dovecot
+ENV DOVECOT_LMTP_PORT                   24
+ENV DOVECOT_AUTH_PORT                   11000
+
 
 # define service ports
 EXPOSE $SMTPD_PORT/tcp \
