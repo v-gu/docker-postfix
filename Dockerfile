@@ -48,21 +48,13 @@ ENV SENDER_BCC_MAPS                     ""
 ENV RECIPIENT_BCC_MAPS                  ""
 
 # DKIM
-ENV DKIM_LISTEN_ADDR                    "0.0.0.0"
+ENV DKIM_LISTEN_ADDR                    opendkim
 ENV DKIM_LISTEN_PORT                    9901
 
-ENV SRS_LISTEN_ADDR                     "127.0.0.1"
+ENV SRS_LISTEN_ADDR                     postsrsd
 ENV SRS_DOMAIN                          "${POSTFIX_DOMAIN}"
 ENV SRS_FORWARD_PORT                    10001
 ENV SRS_REVERSE_PORT                    10002
-ENV SRS_SEPARATOR                       "="
-ENV SRS_TIMEOUT                         1800
-ENV SRS_PID_FILE                        ""
-ENV SRS_RUN_AS                          ""
-ENV SRS_CHROOT                          ""
-ENV SRS_EXCLUDE_DOMAINS                 ""
-ENV SRS_REWRITE_HASH_LEN                4
-ENV SRS_VALIDATE_HASH_MINLEN            4
 
 ENV USE_SMTPD                           no
 ENV SMTPD_PORT                          25
@@ -93,6 +85,3 @@ RUN set -ex && \
 
 VOLUME "${ROOT_DIR}"/tls
 VOLUME "${VIRTUAL_MAILBOX_BASE}"
-
-# VOLUME /etc/opendkim
-#        DEP='postfix postsrsd opendkim opendkim-utils courier-imap courier-pop' && \

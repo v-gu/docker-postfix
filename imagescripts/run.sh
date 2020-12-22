@@ -2,7 +2,6 @@
 
 # init vars
 POSTFIX_DIR="${POSTFIX_DIR:-${ROOT_DIR}/postfix}"
-POSTSRSD_DIR="${POSTSRSD_DIR:-${ROOT_DIR}/postsrsd}"
 SASL_CONF_DIR="${SASL_CONF_DIR:-${ROOT_DIR}/sasl2}"
 
 POSTFIX_MYNETWORKS="${POSTFIX_MYNETWORKS}"
@@ -42,22 +41,14 @@ SENDER_BCC_MAPS="${SENDER_BCC_MAPS}"
 RECIPIENT_BCC_MAPS="${RECIPIENT_BCC_MAPS}"
 
 # DKIM
-DKIM_LISTEN_ADDR="${DKIM_LISTEN_ADDR:-127.0.0.1}"
+DKIM_LISTEN_ADDR="${DKIM_LISTEN_ADDR:-opendkim}"
 DKIM_LISTEN_PORT="${DKIM_LISTEN_PORT:-9901}"
 
-SRS_LISTEN_ADDR="${SRS_LISTEN_ADDR:-127.0.0.1}"
+# SRS
+SRS_LISTEN_ADDR="${SRS_LISTEN_ADDR:-postsrsd}"
 SRS_DOMAIN="${SRS_DOMAIN:-${POSTFIX_DOMAIN}}"
 SRS_FORWARD_PORT="${SRS_FORWARD_PORT:-10001}"
 SRS_REVERSE_PORT="${SRS_REVERSE_PORT:-10002}"
-SRS_SEPARATOR="${SRS_SEPARATOR:-=}"
-SRS_TIMEOUT="${SRS_TIMEOUT:-1800}"
-SRS_SECRET_FILE="${SRS_SECRET_FILE:-${POSTSRSD_DIR}/postsrsd.secret}"
-SRS_PID_FILE="${SRS_PID_FILE}"
-SRS_RUN_AS="${SRS_RUN_AS}"
-SRS_CHROOT="${SRS_CHROOT}"
-SRS_EXCLUDE_DOMAINS="${SRS_EXCLUDE_DOMAINS}"
-SRS_REWRITE_HASH_LEN="${SRS_REWRITE_HASH_LEN:-4}"
-SRS_VALIDATE_HASH_MINLEN="${SRS_VALIDATE_HASH_MINLEN:-4}"
 
 # smtp ingress service
 USE_SMTPD="${USE_SMTPD:-no}"
@@ -104,6 +95,7 @@ ln -sn /etc/postfix ${POSTFIX_DIR}
 # init postfix
 ## init main.cf
 cat <<EOF >${POSTFIX_DIR}/main.cf
+
 # log settings
 maillog_file=/dev/stdout
 
@@ -250,76 +242,26 @@ EOF
 fi
 
 # # add opendkim config
-# cat <<EOF >>${POSTFIX_DIR}/main.cf
+cat <<EOF >>${POSTFIX_DIR}/main.cf
 
-# # DKIM
-# milter_protocol = 2
-# milter_default_action = accept
-# # OpenDKIM runs on port ${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}.
-# smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
-# non_smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
-# EOF
+# DKIM
+milter_protocol = 2
+milter_default_action = accept
+# OpenDKIM runs on port ${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}.
+smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
+non_smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
+EOF
 
-# # add SRS config
-# cat <<EOF >> ${POSTFIX_DIR}/main.cf
+# add SRS config
+cat <<EOF >> ${POSTFIX_DIR}/main.cf
 
-# # SRS
-# sender_canonical_maps = tcp:localhost:${SRS_FORWARD_PORT}
-# sender_canonical_classes = envelope_sender
-# recipient_canonical_maps = tcp:localhost:${SRS_REVERSE_PORT}
-# recipient_canonical_classes= envelope_recipient,header_recipient
-# EOF
+# SRS
+sender_canonical_maps = tcp:${SRS_LISTEN_ADDR}:${SRS_FORWARD_PORT}
+sender_canonical_classes = envelope_sender
+recipient_canonical_maps = tcp:${SRS_LISTEN_ADDR}:${SRS_REVERSE_PORT}
+recipient_canonical_classes= envelope_recipient,header_recipient
+EOF
 
-# # prepare postsrsd
-# ln -sn /etc/postsrsd "${POSTSRSD_DIR}"
-# echo $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) > "${SRS_SECRET_FILE}"
-
-# # run postsrsd
-# cmd="postsrsd -D"
-# # if [ -n "${SRS_LISTEN_ADDR+x}" ]; then
-# #     cmd+=" -l ${SRS_LISTEN_ADDR}"
-# # fi
-# if [ -n "${SRS_DOMAIN}" ]; then
-#     cmd+=" -d ${SRS_DOMAIN}"
-# fi
-# if [ -n "${SRS_SEPARATOR}" ]; then
-#     cmd+=" -a ${SRS_SEPARATOR}"
-# fi
-# if [ -n "${SRS_FORWARD_PORT}" ]; then
-#     cmd+=" -f ${SRS_FORWARD_PORT}"
-# fi
-# if [ -n "${SRS_REVERSE_PORT}" ]; then
-#     cmd+=" -r ${SRS_REVERSE_PORT}"
-# fi
-# if [ -n "${SRS_TIMEOUT}" ]; then
-#     cmd+=" -t ${SRS_TIMEOUT}"
-# fi
-# if [ -n "${SRS_SECRET_FILE}" ]; then
-#     cmd+=" -s ${SRS_SECRET_FILE}"
-# fi
-# if [ -n "${SRS_PID_FILE}" ]; then
-#     cmd+=" -p ${SRS_PID_FILE}"
-# fi
-# if [ -n "${SRS_RUN_AS}" ]; then
-#     cmd+=" -u ${SRS_RUN_AS}"
-# fi
-# if [ -n "${SRS_CHROOT}" ]; then
-#     cmd+=" -c ${SRS_CHROOT}"
-# fi
-# if [ -n "${SRS_EXCLUDE_DOMAINS}" ]; then
-#     cmd+=" -X ${SRS_EXCLUDE_DOMAINS}"
-# fi
-# # if [ -n "${SRS_REWRITE_HASH_LEN+x}" ]; then
-# #     cmd+=" -n ${SRS_REWRITE_HASH_LEN}"
-# # fi
-# # if [ -n "${SRS_VALIDATE_HASH_MINLEN+x}" ]; then
-# #     cmd+=" -N ${SRS_VALIDATE_HASH_MINLEN}"
-# # fi
-# eval "${cmd}"
-# if [ $? -ne 0 ]; then
-#     echo "error running postsrsd"
-#     exit 1
-# fi
 
 # default smtpd ingress config
 cat <<EOF >>${POSTFIX_DIR}/main.cf
