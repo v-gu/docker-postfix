@@ -103,12 +103,15 @@ fi
 ln -sn /etc/postfix ${POSTFIX_DIR}
 
 # start rsyslog
-rm -f /var/run/rsyslogd.pid
-rsyslogd
+# rm -f /var/run/rsyslogd.pid
+# rsyslogd
 
 # init postfix
 ## init main.cf
 cat <<EOF >${POSTFIX_DIR}/main.cf
+# log settings
+maillog_file=/dev/stdout
+
 # misc settings
 compatibility_level =  9999
 header_size_limit = 4096000
@@ -251,130 +254,130 @@ EOF
     rm ${POSTFIX_DIR}/recipient_bcc
 fi
 
-# add opendkim config
-cat <<EOF >>${POSTFIX_DIR}/main.cf
+# # add opendkim config
+# cat <<EOF >>${POSTFIX_DIR}/main.cf
 
-# DKIM
-milter_protocol = 2
-milter_default_action = accept
-# OpenDKIM runs on port ${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}.
-smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
-non_smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
-EOF
+# # DKIM
+# milter_protocol = 2
+# milter_default_action = accept
+# # OpenDKIM runs on port ${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}.
+# smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
+# non_smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
+# EOF
 
-ln -sn /etc/opendkim ${OPENDKIM_DIR}
-cat <<EOF > ${OPENDKIM_DIR}/opendkim.conf
-# OpenDKIM config.
+# ln -sn /etc/opendkim ${OPENDKIM_DIR}
+# cat <<EOF > ${OPENDKIM_DIR}/opendkim.conf
+# # OpenDKIM config.
 
-# Log to syslog
-BaseDirectory           ${OPENDKIM_DIR}
+# # Log to syslog
+# BaseDirectory           ${OPENDKIM_DIR}
 
-Syslog                  yes
-SyslogSuccess           yes
-LogWhy                  yes
-# Required to use local socket with MTAs that access the socket as a non-
-# privileged user (e.g. Postfix)
-UMask                   002
+# Syslog                  yes
+# SyslogSuccess           yes
+# LogWhy                  yes
+# # Required to use local socket with MTAs that access the socket as a non-
+# # privileged user (e.g. Postfix)
+# UMask                   002
 
-Mode                    sv
-PidFile                 ${OPENDKIM_DIR}/opendkim.pid
-UserID                  root:root
-Socket                  inet:${DKIM_LISTEN_PORT}@${DKIM_LISTEN_ADDR}
+# Mode                    sv
+# PidFile                 ${OPENDKIM_DIR}/opendkim.pid
+# UserID                  root:root
+# Socket                  inet:${DKIM_LISTEN_PORT}@${DKIM_LISTEN_ADDR}
 
-Canonicalization        relaxed/simple
-SignatureAlgorithm      rsa-sha256
+# Canonicalization        relaxed/simple
+# SignatureAlgorithm      rsa-sha256
 
-# Sign for example.com with key in /etc/opendkim/mail.private using
-# selector 'mail' (e.g. mail._domainkey.example.com)
-Domain                  ${DKIM_DOMAIN}
-KeyFile                 ${DKIM_KEY_FILE}
-Selector                ${DKIM_SELECTOR}
+# # Sign for example.com with key in /etc/opendkim/mail.private using
+# # selector 'mail' (e.g. mail._domainkey.example.com)
+# Domain                  ${DKIM_DOMAIN}
+# KeyFile                 ${DKIM_KEY_FILE}
+# Selector                ${DKIM_SELECTOR}
 
-ExternalIgnoreList      refile:${OPENDKIM_DIR}/TrustedHosts
-InternalHosts           refile:${OPENDKIM_DIR}/TrustedHosts
-EOF
+# ExternalIgnoreList      refile:${OPENDKIM_DIR}/TrustedHosts
+# InternalHosts           refile:${OPENDKIM_DIR}/TrustedHosts
+# EOF
 
-# fill TrustedHosts
-echo -e "${DKIM_TRUSTED_HOSTS}" > ${OPENDKIM_DIR}/TrustedHosts
+# # fill TrustedHosts
+# echo -e "${DKIM_TRUSTED_HOSTS}" > ${OPENDKIM_DIR}/TrustedHosts
 
-# generate DKIM key/text
-if [ ! -f "${DKIM_KEY_FILE}" ]; then
-    cd "${OPENDKIM_DIR}"
-    opendkim-genkey -s mail -d "${POSTFIX_DOMAIN}"
-    chmod 600 mail.private
-    cd -
-    echo DKIM txt generated
-fi
-echo please consult your DNS service provider and add below to your DNS TXT record
-cat ${OPENDKIM_DIR}/mail.txt
-
-# start opendkim server
-opendkim
-if [ $? -ne 0 ]; then
-    echo "error running opendkim"
-    exit 1
-fi
-
-# add SRS config
-cat <<EOF >> ${POSTFIX_DIR}/main.cf
-
-# SRS
-sender_canonical_maps = tcp:localhost:${SRS_FORWARD_PORT}
-sender_canonical_classes = envelope_sender
-recipient_canonical_maps = tcp:localhost:${SRS_REVERSE_PORT}
-recipient_canonical_classes= envelope_recipient,header_recipient
-EOF
-
-# prepare postsrsd
-ln -sn /etc/postsrsd "${POSTSRSD_DIR}"
-echo $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) > "${SRS_SECRET_FILE}"
-
-# run postsrsd
-cmd="postsrsd -D"
-# if [ -n "${SRS_LISTEN_ADDR+x}" ]; then
-#     cmd+=" -l ${SRS_LISTEN_ADDR}"
+# # generate DKIM key/text
+# if [ ! -f "${DKIM_KEY_FILE}" ]; then
+#     cd "${OPENDKIM_DIR}"
+#     opendkim-genkey -s mail -d "${POSTFIX_DOMAIN}"
+#     chmod 600 mail.private
+#     cd -
+#     echo DKIM txt generated
 # fi
-if [ -n "${SRS_DOMAIN}" ]; then
-    cmd+=" -d ${SRS_DOMAIN}"
-fi
-if [ -n "${SRS_SEPARATOR}" ]; then
-    cmd+=" -a ${SRS_SEPARATOR}"
-fi
-if [ -n "${SRS_FORWARD_PORT}" ]; then
-    cmd+=" -f ${SRS_FORWARD_PORT}"
-fi
-if [ -n "${SRS_REVERSE_PORT}" ]; then
-    cmd+=" -r ${SRS_REVERSE_PORT}"
-fi
-if [ -n "${SRS_TIMEOUT}" ]; then
-    cmd+=" -t ${SRS_TIMEOUT}"
-fi
-if [ -n "${SRS_SECRET_FILE}" ]; then
-    cmd+=" -s ${SRS_SECRET_FILE}"
-fi
-if [ -n "${SRS_PID_FILE}" ]; then
-    cmd+=" -p ${SRS_PID_FILE}"
-fi
-if [ -n "${SRS_RUN_AS}" ]; then
-    cmd+=" -u ${SRS_RUN_AS}"
-fi
-if [ -n "${SRS_CHROOT}" ]; then
-    cmd+=" -c ${SRS_CHROOT}"
-fi
-if [ -n "${SRS_EXCLUDE_DOMAINS}" ]; then
-    cmd+=" -X ${SRS_EXCLUDE_DOMAINS}"
-fi
-# if [ -n "${SRS_REWRITE_HASH_LEN+x}" ]; then
-#     cmd+=" -n ${SRS_REWRITE_HASH_LEN}"
+# echo please consult your DNS service provider and add below to your DNS TXT record
+# cat ${OPENDKIM_DIR}/mail.txt
+
+# # start opendkim server
+# opendkim
+# if [ $? -ne 0 ]; then
+#     echo "error running opendkim"
+#     exit 1
 # fi
-# if [ -n "${SRS_VALIDATE_HASH_MINLEN+x}" ]; then
-#     cmd+=" -N ${SRS_VALIDATE_HASH_MINLEN}"
+
+# # add SRS config
+# cat <<EOF >> ${POSTFIX_DIR}/main.cf
+
+# # SRS
+# sender_canonical_maps = tcp:localhost:${SRS_FORWARD_PORT}
+# sender_canonical_classes = envelope_sender
+# recipient_canonical_maps = tcp:localhost:${SRS_REVERSE_PORT}
+# recipient_canonical_classes= envelope_recipient,header_recipient
+# EOF
+
+# # prepare postsrsd
+# ln -sn /etc/postsrsd "${POSTSRSD_DIR}"
+# echo $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) > "${SRS_SECRET_FILE}"
+
+# # run postsrsd
+# cmd="postsrsd -D"
+# # if [ -n "${SRS_LISTEN_ADDR+x}" ]; then
+# #     cmd+=" -l ${SRS_LISTEN_ADDR}"
+# # fi
+# if [ -n "${SRS_DOMAIN}" ]; then
+#     cmd+=" -d ${SRS_DOMAIN}"
 # fi
-eval "${cmd}"
-if [ $? -ne 0 ]; then
-    echo "error running postsrsd"
-    exit 1
-fi
+# if [ -n "${SRS_SEPARATOR}" ]; then
+#     cmd+=" -a ${SRS_SEPARATOR}"
+# fi
+# if [ -n "${SRS_FORWARD_PORT}" ]; then
+#     cmd+=" -f ${SRS_FORWARD_PORT}"
+# fi
+# if [ -n "${SRS_REVERSE_PORT}" ]; then
+#     cmd+=" -r ${SRS_REVERSE_PORT}"
+# fi
+# if [ -n "${SRS_TIMEOUT}" ]; then
+#     cmd+=" -t ${SRS_TIMEOUT}"
+# fi
+# if [ -n "${SRS_SECRET_FILE}" ]; then
+#     cmd+=" -s ${SRS_SECRET_FILE}"
+# fi
+# if [ -n "${SRS_PID_FILE}" ]; then
+#     cmd+=" -p ${SRS_PID_FILE}"
+# fi
+# if [ -n "${SRS_RUN_AS}" ]; then
+#     cmd+=" -u ${SRS_RUN_AS}"
+# fi
+# if [ -n "${SRS_CHROOT}" ]; then
+#     cmd+=" -c ${SRS_CHROOT}"
+# fi
+# if [ -n "${SRS_EXCLUDE_DOMAINS}" ]; then
+#     cmd+=" -X ${SRS_EXCLUDE_DOMAINS}"
+# fi
+# # if [ -n "${SRS_REWRITE_HASH_LEN+x}" ]; then
+# #     cmd+=" -n ${SRS_REWRITE_HASH_LEN}"
+# # fi
+# # if [ -n "${SRS_VALIDATE_HASH_MINLEN+x}" ]; then
+# #     cmd+=" -N ${SRS_VALIDATE_HASH_MINLEN}"
+# # fi
+# eval "${cmd}"
+# if [ $? -ne 0 ]; then
+#     echo "error running postsrsd"
+#     exit 1
+# fi
 
 # default smtpd ingress config
 cat <<EOF >>${POSTFIX_DIR}/main.cf
@@ -390,6 +393,7 @@ cat <<EOF > ${POSTFIX_DIR}/master.cf
 # service type  private unpriv  chroot  wakeup  maxproc command + args
 #               (yes)   (yes)   (no)    (never) (100)
 # ==========================================================================
+postlog   unix-dgram n  -       n       -       1       postlogd
 pickup    unix  n       -       n       60      1       pickup
 cleanup   unix  n       -       n       -       0       cleanup
 qmgr      unix  n       -       n       300     1       qmgr
@@ -432,20 +436,20 @@ if [ "${USE_SUBMISSION}" == 'yes' ]; then
     # sasl config
     cat <<EOF >> ${POSTFIX_DIR}/main.cf
 
-# smtpd submission sasl config
-smtp_sasl_password_maps = ${SMTP_SASL_PASSWORD_MAPS}
-EOF
-    mkdir -p /etc/sasl2 && ln -sn /etc/sasl2 "${SASL_CONF_DIR}"
-    cat <<EOF >"${SASL_CONF_DIR}"/smtpd.conf
-sasldb_path: ${SUBM_SASL_DB_FILE}
-pwcheck_method: auxprop
-auxprop_plugin: sasldb
-mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5 NTLM
-log_level: 7
-EOF
-    if [ "${SASL_CONF_DIR}" != "/etc/sasl2" ]; then
-        ln -s "${SASL_CONF_DIR}"/smtpd.conf /etc/sasl2/smtpd.conf
-    fi
+# # smtpd submission sasl config
+# smtp_sasl_password_maps = ${SMTP_SASL_PASSWORD_MAPS}
+# EOF
+#     mkdir -p /etc/sasl2 && ln -sn /etc/sasl2 "${SASL_CONF_DIR}"
+#     cat <<EOF >"${SASL_CONF_DIR}"/smtpd.conf
+# sasldb_path: ${SUBM_SASL_DB_FILE}
+# pwcheck_method: auxprop
+# auxprop_plugin: sasldb
+# mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5 NTLM
+# log_level: 7
+# EOF
+#     if [ "${SASL_CONF_DIR}" != "/etc/sasl2" ]; then
+#         ln -s "${SASL_CONF_DIR}"/smtpd.conf /etc/sasl2/smtpd.conf
+#     fi
 
     # tls config
     if [ ! -f "${SUBM_TLS_KEY_FILE}" ]; then
@@ -465,24 +469,24 @@ EOF
                 -days 100000 \
                 -nodes \
                 -x509 \
-                -subj "/C=US/ST=California/L=SanMateo/O=vgu.io/CN=${POSTFIX_DOMAIN}" \
+                -subj "/C=US/ST=State/L=Location/O=example.com/CN=${POSTFIX_DOMAIN}" \
                 -keyout "${POSTFIX_DOMAIN}".key \
                 -out "${POSTFIX_DOMAIN}".cert
         chmod 400 "${POSTFIX_DOMAIN}".key
         chmod 400 "${POSTFIX_DOMAIN}".cert
         chown postfix:postfix *
         cd -
-        echo "submisstion's TLS key/cert generated"
+        echo "submission's TLS key/cert generated"
     fi
 
-    # user shoud provide sasldb2 file in ${SUBM_SASL_DB_FILE}
-    if [ ! -f "${SUBM_SASL_DB_FILE}" ] && [ -n "${SUBM_SASL_PASSWORD}" ]; then
-        echo "generate sasl db file from provided password .."
-        mkdir -p "$(dirname ${SUBM_SASL_DB_FILE})"
-        echo -n "${SUBM_SASL_PASSWORD}" | saslpasswd2 -f "${SUBM_SASL_DB_FILE}" -c -u "${POSTFIX_DOMAIN}" "${SUBM_SASL_USERNAME}"
-    fi
-    chmod 400 "${SUBM_SASL_DB_FILE}"
-    chown postfix:postfix "${SUBM_SASL_DB_FILE}"
+#     # user shoud provide sasldb2 file in ${SUBM_SASL_DB_FILE}
+#     if [ ! -f "${SUBM_SASL_DB_FILE}" ] && [ -n "${SUBM_SASL_PASSWORD}" ]; then
+#         echo "generate sasl db file from provided password .."
+#         mkdir -p "$(dirname ${SUBM_SASL_DB_FILE})"
+#         echo -n "${SUBM_SASL_PASSWORD}" | saslpasswd2 -f "${SUBM_SASL_DB_FILE}" -c -u "${POSTFIX_DOMAIN}" "${SUBM_SASL_USERNAME}"
+#     fi
+#     chmod 400 "${SUBM_SASL_DB_FILE}"
+#     chown postfix:postfix "${SUBM_SASL_DB_FILE}"
 
     # in master.cf
     if [ -z "${SUBM_PORT}" ] || [ "$SUBM_PORT" == "587" ]; then
@@ -510,7 +514,7 @@ smtp_tls_security_level = ${SMTP_TLS_SECURITY_LEVEL}
 EOF
 
 # run postfix
-postfix start
+exec postfix start-fg
 
-# tail logs to stderr
-exec tail -f /var/log/maillog >&2
+# # tail logs to stderr
+# exec tail -f /var/log/maillog >&2

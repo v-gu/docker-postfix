@@ -87,9 +87,12 @@ EXPOSE $SMTPD_PORT/tcp \
 
 # install software stack
 RUN set -ex && \
-    DEP='rsyslog cyrus-sasl postfix postsrsd opendkim opendkim-utils' && \
+    DEP='postfix' && \
     apk add --update --no-cache $DEP && \
     rm -rf /var/cache/apk/*
 
-VOLUME /etc/opendkim
 VOLUME "${ROOT_DIR}"/tls
+VOLUME "${VIRTUAL_MAILBOX_BASE}"
+
+# VOLUME /etc/opendkim
+#        DEP='postfix postsrsd opendkim opendkim-utils courier-imap courier-pop' && \
