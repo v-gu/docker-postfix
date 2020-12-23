@@ -78,12 +78,12 @@ if [ -z "${POSTFIX_DOMAIN}" ]; then
     exit 1
 fi
 
-if [ "${USE_SUBMISSION}" == "yes" ]; then
-    if [ ! -f "${SUBM_SASL_DB_FILE}" ] && [ -z "${SUBM_SASL_PASSWORD}" ]; then
-        echo "submission's sasl database file not exist at path '${SUBM_SASL_DB_FILE}', nor password provided"
-        exit 1
-    fi
-fi
+# if [ "${USE_SUBMISSION}" == "yes" ]; then
+#     if [ ! -f "${SUBM_SASL_DB_FILE}" ] && [ -z "${SUBM_SASL_PASSWORD}" ]; then
+#         echo "submission's sasl database file not exist at path '${SUBM_SASL_DB_FILE}', nor password provided"
+#         exit 1
+#     fi
+# fi
 
 # preparing app directories
 ln -sn /etc/postfix ${POSTFIX_DIR}
@@ -265,7 +265,8 @@ non_smtpd_milters = inet:${DKIM_LISTEN_ADDR}:${DKIM_LISTEN_PORT}
 EOF
 
 # add SRS config
-cat <<EOF >> ${POSTFIX_DIR}/main.cf
+if [[ "${USE_SRS}" == "true" || "${USE_SRS}" == "yes" ]]; then
+    cat <<EOF >> ${POSTFIX_DIR}/main.cf
 
 # SRS
 sender_canonical_maps = tcp:${SRS_LISTEN_ADDR}:${SRS_FORWARD_PORT}
@@ -273,6 +274,7 @@ sender_canonical_classes = envelope_sender
 recipient_canonical_maps = tcp:${SRS_LISTEN_ADDR}:${SRS_REVERSE_PORT}
 recipient_canonical_classes= envelope_recipient,header_recipient
 EOF
+fi
 
 
 # default smtpd ingress config
@@ -329,24 +331,6 @@ fi
 
 # submission config
 if [ "${USE_SUBMISSION}" == 'yes' ]; then
-    # sasl config
-    cat <<EOF >> ${POSTFIX_DIR}/main.cf
-
-# # smtpd submission sasl config
-# smtp_sasl_password_maps = ${SMTP_SASL_PASSWORD_MAPS}
-# EOF
-#     mkdir -p /etc/sasl2 && ln -sn /etc/sasl2 "${SASL_CONF_DIR}"
-#     cat <<EOF >"${SASL_CONF_DIR}"/smtpd.conf
-# sasldb_path: ${SUBM_SASL_DB_FILE}
-# pwcheck_method: auxprop
-# auxprop_plugin: sasldb
-# mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5 NTLM
-# log_level: 7
-# EOF
-#     if [ "${SASL_CONF_DIR}" != "/etc/sasl2" ]; then
-#         ln -s "${SASL_CONF_DIR}"/smtpd.conf /etc/sasl2/smtpd.conf
-#     fi
-
     # tls config
     if [ ! -f "${SUBM_TLS_KEY_FILE}" ]; then
         echo "submission's TLS key not exist at '${SUBM_TLS_KEY_FILE}'"
@@ -392,7 +376,7 @@ ${SUBM_PORT}    inet n       -       n       -       -       smtpd
 EOF
 
     if [[ "${USE_DOVECOT_FOR_SUBMISSION_AUTH}" == "true" || "${USE_DOVECOT_FOR_SUBMISSION_AUTH}" == "yes" ]]; then
-        cat <<EOF >> ${POSTFIX_DIR}/main.cf
+        cat <<EOF >> ${POSTFIX_DIR}/master.cf
   -o smtpd_sasl_type=dovecot
   -o smtpd_sasl_path=inet:${DOVECOT_HOST}:${DOVECOT_AUTH_PORT}
   -o smtpd_sasl_security_options=noanonymous

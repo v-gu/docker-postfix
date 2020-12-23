@@ -51,17 +51,18 @@ ENV RECIPIENT_BCC_MAPS                  ""
 ENV DKIM_LISTEN_ADDR                    opendkim
 ENV DKIM_LISTEN_PORT                    9901
 
+ENV USE_SRS                             "no"
 ENV SRS_LISTEN_ADDR                     postsrsd
 ENV SRS_DOMAIN                          "${POSTFIX_DOMAIN}"
 ENV SRS_FORWARD_PORT                    10001
 ENV SRS_REVERSE_PORT                    10002
 
-ENV USE_SMTPD                           no
+ENV USE_SMTPD                           "no"
 ENV SMTPD_PORT                          25
 ENV SMTPD_RELAY_RESTRICTIONS            permit_auth_destination,reject
 ENV SMTPD_REJECT_UNLISTED_RECIPIENT     yes
 
-ENV USE_SUBMISSION                      no
+ENV USE_SUBMISSION                      "no"
 ENV SUBM_PORT                           587
 ENV SUBM_TLS_SECURITY_LEVEL             encrypt
 ENV SUBM_SASL_AUTH                      yes
@@ -76,7 +77,7 @@ ENV SMTP_TLS_SECURITY_LEVEL             "may"
 # Dovecot
 ENV USE_DOVECOT_FOR_LOCAL               "false"
 ENV USE_DOVECOT_FOR_VIRTUAL             "false"
-ENV USE_DOVECOT_FOR_SUBMISSION_AUTH     "false"
+ENV USE_DOVECOT_FOR_SUBMISSION_AUTH     "true"
 ENV DOVECOT_HOST                        dovecot
 ENV DOVECOT_LMTP_PORT                   24
 ENV DOVECOT_AUTH_PORT                   11000
@@ -88,7 +89,7 @@ EXPOSE $SMTPD_PORT/tcp \
 
 # install software stack
 RUN set -ex && \
-    DEP='postfix' && \
+    DEP='postfix openssl' && \
     apk add --update --no-cache $DEP && \
     rm -rf /var/cache/apk/*
 
