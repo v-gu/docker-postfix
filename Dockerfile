@@ -15,6 +15,7 @@ ENV POSTFIX_MYNETWORKS                  ""
 ENV POSTFIX_HOSTNAME                    ""
 ENV POSTFIX_DOMAIN                      "${POSTFIX_HOSTNAME}"
 ENV POSTFIX_ORIGIN                      "${POSTFIX_DOMAIN}"
+ENV POSTFIX_HOSTING_DOMAINS             "${POSTFIX_DOMAIN}"
 
 # local alias
 ENV ALIAS_MAPS                          ""

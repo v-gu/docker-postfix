@@ -8,6 +8,7 @@ POSTFIX_MYNETWORKS="${POSTFIX_MYNETWORKS}"
 POSTFIX_HOSTNAME="${POSTFIX_HOSTNAME}"
 POSTFIX_DOMAIN="${POSTFIX_DOMAIN}"
 POSTFIX_ORIGIN="${POSTFIX_ORIGIN:-${POSTFIX_DOMAIN}}"
+POSTFIX_HOSTING_DOMAINS="${POSTFIX_HOSTING_DOMAINS:-${POSTFIX_DOMAIN}}"
 
 # local domain class
 ALIAS_MAPS="${ALIAS_MAPS}"
@@ -45,6 +46,7 @@ DKIM_LISTEN_ADDR="${DKIM_LISTEN_ADDR:-opendkim}"
 DKIM_LISTEN_PORT="${DKIM_LISTEN_PORT:-9901}"
 
 # SRS
+USE_SRS="${USE_SRS:-false}"
 SRS_LISTEN_ADDR="${SRS_LISTEN_ADDR:-postsrsd}"
 SRS_DOMAIN="${SRS_DOMAIN:-${POSTFIX_DOMAIN}}"
 SRS_FORWARD_PORT="${SRS_FORWARD_PORT:-10001}"
@@ -71,6 +73,13 @@ SUBM_SASL_PASSWORD="${SUBM_SASL_PASSWORD}"
 
 # smtp service
 SMTP_TLS_SECURITY_LEVEL="${SMTP_TLS_SECURITY_LEVEL:-may}"
+
+# virtual transport
+USE_DOVECOT_FOR_VIRTUAL="${USE_DOVECOT_FOR_VIRTUAL}"
+USE_DOVECOT_FOR_SUBMISSION_AUTH="${USE_DOVECOT_FOR_SUBMISSION_AUTH}"
+DOVECOT_HOST="${DOVECOT_HOST}"
+DOVECOT_LMTP_PORT="${DOVECOT_LMTP_PORT}"
+DOVECOT_AUTH_PORT="${DOVECOT_AUTH_PORT}"
 
 # check prerequisite variables
 if [ -z "${POSTFIX_DOMAIN}" ]; then
@@ -331,46 +340,114 @@ fi
 
 # submission config
 if [ "${USE_SUBMISSION}" == 'yes' ]; then
-    # tls config
-    if [ ! -f "${SUBM_TLS_KEY_FILE}" ]; then
-        echo "submission's TLS key not exist at '${SUBM_TLS_KEY_FILE}'"
-    fi
-    if [ ! -f "${SUBM_TLS_CERT_FILE}" ]; then
-        echo "submission's TLS certification not exist at '${SUBM_TLS_CERT_FILE}'"
-    fi
-    if [ -f "${SUBM_TLS_KEY_FILE}" ] && [ -f "${SUBM_TLS_CERT_FILE}" ]; then
-        echo "submission's TLS key/cert is provided with ${SUBM_TLS_KEY_FILE} and ${SUBM_TLS_CERT_FILE}"
-    else
-        # create rsa key-pair
-        mkdir -p "${ROOT_DIR}/tls"
-        cd "${ROOT_DIR}/tls"
-        openssl req \
-                -new -newkey rsa:2048 \
-                -days 100000 \
-                -nodes \
-                -x509 \
-                -subj "/C=US/ST=State/L=Location/O=example.com/CN=${POSTFIX_DOMAIN}" \
-                -keyout "${POSTFIX_DOMAIN}".key \
-                -out "${POSTFIX_DOMAIN}".cert
-        chmod 400 "${POSTFIX_DOMAIN}".key
-        chmod 400 "${POSTFIX_DOMAIN}".cert
-        chown postfix:postfix *
-        cd -
-        echo "submission's TLS key/cert generated"
-    fi
+    rm -f ${POSTFIX_DIR}/sni
+
+    main_tls_key_file=""
+    main_tls_cert_file=""
+    IFS=' ' read -ra domains <<< "${POSTFIX_HOSTING_DOMAINS}"
+    for i in "${domains[@]}"; do
+        # tls config
+        tls_key_file="${ROOT_DIR}/tls/${i}/${i}.key"
+        tls_cert_file="${ROOT_DIR}/tls/${i}/${i}.crt"
+        if [ ! -f "${tls_key_file}" ]; then
+            echo "submission's TLS key not exist: '${tls_key_file}'"
+        fi
+        if [ ! -f "${tls_cert_file}" ]; then
+            echo "submission's TLS certification not exist: '${tls_cert_file}'"
+        fi
+        if [ -f "${tls_key_file}" ] && [ -f "${tls_cert_file}" ]; then
+            echo "submission's TLS key/cert is provided with ${tls_key_file} and ${tls_cert_file}"
+        else
+            # create rsa key-pair
+            mkdir -p "${ROOT_DIR}/tls"
+            pushd "${ROOT_DIR}/tls"
+            openssl req \
+                    -new -newkey rsa:2048 \
+                    -days 100000 \
+                    -nodes \
+                    -x509 \
+                    -subj "/C=US/ST=State/L=Location/O=example.com/CN=${i}" \
+                    -keyout "${i}".key \
+                    -out "${i}".cert
+            chmod 400 "${i}".key
+            chmod 400 "${i}".cert
+            chown postfix:postfix *
+            popd
+            echo "submission's TLS key/cert generated for domain ${i}"
+        fi
+
+        # add tls files to SNI
+        cat <<EOF >> ${POSTFIX_DIR}/sni
+# Compile with postmap -F hash:/etc/postfix/sni when updating
+# One host per line
+${i} ${tls_key_file} ${tls_cert_file}
+EOF
+
+        # assign main_tls_*_file
+        if [ "${main_tls_key_file}" == "" ]; then
+            main_tls_key_file="${tls_key_file}"
+            main_tls_cert_file="${tls_cert_file}"
+        fi
+    done
+
+    # compile SNI
+    postmap -F lmdb:${POSTFIX_DIR}/sni
+
+    # # tls config
+    # if [ ! -f "${SUBM_TLS_KEY_FILE}" ]; then
+    #     echo "submission's TLS key not exist at '${SUBM_TLS_KEY_FILE}'"
+    # fi
+    # if [ ! -f "${SUBM_TLS_CERT_FILE}" ]; then
+    #     echo "submission's TLS certification not exist at '${SUBM_TLS_CERT_FILE}'"
+    # fi
+    # if [ -f "${SUBM_TLS_KEY_FILE}" ] && [ -f "${SUBM_TLS_CERT_FILE}" ]; then
+    #     echo "submission's TLS key/cert is provided with ${SUBM_TLS_KEY_FILE} and ${SUBM_TLS_CERT_FILE}"
+    # else
+    #     # create rsa key-pair
+    #     mkdir -p "${ROOT_DIR}/tls"
+    #     cd "${ROOT_DIR}/tls"
+    #     openssl req \
+    #             -new -newkey rsa:2048 \
+    #             -days 100000 \
+    #             -nodes \
+    #             -x509 \
+    #             -subj "/C=US/ST=State/L=Location/O=example.com/CN=${POSTFIX_DOMAIN}" \
+    #             -keyout "${POSTFIX_DOMAIN}".key \
+    #             -out "${POSTFIX_DOMAIN}".cert
+    #     chmod 400 "${POSTFIX_DOMAIN}".key
+    #     chmod 400 "${POSTFIX_DOMAIN}".cert
+    #     chown postfix:postfix *
+    #     cd -
+    #     echo "submission's TLS key/cert generated"
+    # fi
 
     # in master.cf
     if [ -z "${SUBM_PORT}" ] || [ "$SUBM_PORT" == "587" ]; then
         SUBM_PORT=submission
     fi
+#     cat <<EOF >> ${POSTFIX_DIR}/master.cf
+# ${SUBM_PORT}    inet n       -       n       -       -       smtpd
+#   -o syslog_name=postfix/submission
+#   -o smtpd_relay_restrictions=${SUBM_RELAY_RESTRICTIONS}
+#   -o smtpd_reject_unlisted_recipient=${SUBM_REJECT_UNLISTED_RECIPIENT}
+#   -o smtpd_tls_security_level=${SUBM_TLS_SECURITY_LEVEL}
+#   -o smtpd_tls_cert_file=${SUBM_TLS_CERT_FILE}
+#   -o smtpd_tls_key_file=${SUBM_TLS_KEY_FILE}
+#   -o smtpd_sasl_auth_enable=${SUBM_SASL_AUTH}
+#   -o milter_macro_daemon_name=ORIGINATING
+# EOF
+    cat <<EOF >>${POSTFIX_DIR}/main.cf
+
+# TLS
+tls_server_sni_maps=lmdb:${POSTFIX_DIR}/sni
+EOF
     cat <<EOF >> ${POSTFIX_DIR}/master.cf
 ${SUBM_PORT}    inet n       -       n       -       -       smtpd
   -o syslog_name=postfix/submission
   -o smtpd_relay_restrictions=${SUBM_RELAY_RESTRICTIONS}
   -o smtpd_reject_unlisted_recipient=${SUBM_REJECT_UNLISTED_RECIPIENT}
   -o smtpd_tls_security_level=${SUBM_TLS_SECURITY_LEVEL}
-  -o smtpd_tls_cert_file=${SUBM_TLS_CERT_FILE}
-  -o smtpd_tls_key_file=${SUBM_TLS_KEY_FILE}
+  -o smtpd_tls_chain_files=${main_tls_key_file},${main_tls_cert_file}
   -o smtpd_sasl_auth_enable=${SUBM_SASL_AUTH}
   -o milter_macro_daemon_name=ORIGINATING
 EOF
